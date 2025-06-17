@@ -7,7 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"mcp-bridge/internal/domain"
+	"github.com/i2y/mcpizer/internal/domain"
+	"github.com/i2y/mcpizer/internal/usecase"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -26,7 +27,7 @@ func NewSchemaFetcher(logger *slog.Logger, opts ...grpc.DialOption) *SchemaFetch
 	// Default to insecure for local testing/dev; production needs credentials.
 	defaultOpts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(), // Wait for connection to be established
+		// Removed WithBlock() to allow lazy connection
 	}
 	return &SchemaFetcher{
 		dialOpts: append(defaultOpts, opts...),
@@ -34,17 +35,26 @@ func NewSchemaFetcher(logger *slog.Logger, opts ...grpc.DialOption) *SchemaFetch
 	}
 }
 
-// Fetch connects to a gRPC endpoint, uses the reflection service to list services,
-// and stores the list as ParsedData. It doesn't fetch detailed message schemas yet.
+// Fetch connects to a gRPC endpoint, uses the reflection service to list services and methods.
+// This delegates to FetchWithMethods for full implementation.
 func (f *SchemaFetcher) Fetch(ctx context.Context, src string) (domain.APISchema, error) {
+	// Use the enhanced implementation with method discovery
+	return f.FetchWithMethods(ctx, src)
+}
+
+// FetchLegacy is the old implementation that only fetches service names
+func (f *SchemaFetcher) FetchLegacy(ctx context.Context, src string) (domain.APISchema, error) {
 	log := f.logger.With(slog.String("source", src))
 	log.Info("Fetching gRPC schema via reflection")
 
-	// Assume src is the gRPC target address (e.g., "localhost:50051")
+	// Parse the source - remove grpc:// prefix if present
 	target := src
+	if strings.HasPrefix(src, "grpc://") {
+		target = strings.TrimPrefix(src, "grpc://")
+	}
 
 	// Add a timeout to the context for dialing
-	dialCtx, cancel := context.WithTimeout(ctx, 5*time.Second) // Configurable timeout
+	dialCtx, cancel := context.WithTimeout(ctx, 30*time.Second) // Increased timeout for external services
 	defer cancel()
 
 	conn, err := grpc.DialContext(dialCtx, target, f.dialOpts...)
@@ -58,7 +68,7 @@ func (f *SchemaFetcher) Fetch(ctx context.Context, src string) (domain.APISchema
 	refClient := reflectpb.NewServerReflectionClient(conn)
 
 	// Create a reflection stream
-	streamCtx, streamCancel := context.WithTimeout(ctx, 10*time.Second) // Timeout for reflection calls
+	streamCtx, streamCancel := context.WithTimeout(ctx, 30*time.Second) // Increased timeout for reflection calls
 	defer streamCancel()
 	stream, err := refClient.ServerReflectionInfo(streamCtx, grpc.WaitForReady(true))
 	if err != nil {
@@ -116,4 +126,21 @@ func (f *SchemaFetcher) Fetch(ctx context.Context, src string) (domain.APISchema
 		RawData:    []byte(strings.Join(serviceNames, "\n")), // Store service names as raw data for now
 		ParsedData: serviceNames,                             // Store the list of service names
 	}, nil
+}
+
+// FetchWithConfig connects to a gRPC endpoint with custom headers.
+// Note: gRPC doesn't use HTTP headers in the same way as REST APIs.
+// Headers in gRPC are typically metadata attached to individual RPC calls.
+// For schema fetching via reflection, custom headers are usually not needed.
+func (f *SchemaFetcher) FetchWithConfig(ctx context.Context, config usecase.SchemaSourceConfig) (domain.APISchema, error) {
+	log := f.logger.With(slog.String("source", config.URL))
+	if len(config.Headers) > 0 {
+		log.Warn("gRPC schema fetching does not support custom headers for reflection calls", 
+			slog.Int("header_count", len(config.Headers)))
+	}
+	
+	// gRPC reflection doesn't typically require authentication headers
+	// If authentication is needed, it should be configured via DialOptions
+	// For now, we just delegate to the regular Fetch method
+	return f.Fetch(ctx, config.URL)
 }

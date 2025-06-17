@@ -1,0 +1,13 @@
+# Configuration for MCP Bridge Application (Local/STDIO mode)
+
+# List of sources to fetch schemas from.
+# Each entry should be a URL (for OpenAPI) or a grpc:// target (for gRPC reflection).
+schema_sources:
+  - http://localhost:8082/api/v3/openapi.json
+  - grpc://grpcb.in:9000  # Public gRPC test service with reflection enabled
+  # NOTE: gRPC reflection requires a service that explicitly enables it
+  # Most production gRPC services don't expose reflection for security reasons
+
+# Default host to use for OpenAPI tools if the schema doesn't specify server info.
+# This can also be overridden by the MCPIZER_OPENAPI_DEFAULT_HOST environment variable.
+# default_openapi_host: "http://localhost:8082"

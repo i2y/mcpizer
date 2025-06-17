@@ -6,67 +6,57 @@ import (
 	"net/url"
 	"strings"
 
-	"mcp-bridge/internal/domain"
-	"mcp-bridge/internal/usecase"
+	"github.com/i2y/mcpizer/internal/domain"
+	"github.com/i2y/mcpizer/internal/usecase"
 
 	"github.com/getkin/kin-openapi/openapi3"
-	// "mcp-bridge/internal/usecase" // Needed if we generate InvocationDetails here
+	// "github.com/i2y/mcpizer/internal/usecase" // Needed if we generate InvocationDetails here
 )
 
 // ToolGenerator implements the usecase.ToolGenerator interface for OpenAPI schemas.
 type ToolGenerator struct {
-	// config options? e.g., naming conventions, default namespace, default host
-	DefaultHost string // Example: Allow setting a default host for invocation
-	logger      *slog.Logger
+	logger *slog.Logger
 }
 
 // NewToolGenerator creates a new OpenAPI ToolGenerator.
-func NewToolGenerator(defaultHost string, logger *slog.Logger) *ToolGenerator {
+func NewToolGenerator(logger *slog.Logger) *ToolGenerator {
 	return &ToolGenerator{
-		DefaultHost: defaultHost,
-		logger:      logger.With("component", "openapi_generator"),
+		logger: logger.With("component", "openapi_generator"),
 	}
 }
 
 // Generate converts an OpenAPI document into MCP Tools and corresponding InvocationDetails.
 func (g *ToolGenerator) Generate(schema domain.APISchema) ([]domain.Tool, []usecase.InvocationDetails, error) {
 	log := g.logger.With(slog.String("source", schema.Source))
-	log.Info("Generating tools from OpenAPI schema")
+	log.Info("Generating tools from OpenAPI schema.")
 
 	doc, ok := schema.ParsedData.(*openapi3.T)
 	if !ok || doc == nil {
-		log.Error("Invalid or missing parsed OpenAPI document in APISchema")
+		log.Error("Invalid or missing parsed OpenAPI document in APISchema.")
 		return nil, nil, fmt.Errorf("invalid or missing parsed OpenAPI document in APISchema")
 	}
 
+	// Determine base host URL and base path from the schema's Servers block.
+	// Pass schema.Source to resolve relative server URLs.
+	host, basePath, err := g.determineHostAndBasePathFromServers(schema.Source, doc.Servers)
+	if err != nil {
+		// If no suitable server URL found, log warning and potentially return error or continue without host.
+		log.Error("Failed to determine host/basePath from OpenAPI servers block.", slog.Any("error", err))
+		// Return error as host is crucial for invocation details.
+		return nil, nil, fmt.Errorf("could not determine host/basePath from OpenAPI servers: %w", err)
+	}
+	log.Info("Determined host and basePath for generation.", slog.String("host", host), slog.String("basePath", basePath))
+
 	var tools []domain.Tool
 	var detailsList []usecase.InvocationDetails
-	// TODO: Determine a good namespace strategy. Use API title? Hardcode? Configurable?
+	// Determine namespace (consider making configurable).
 	namespace := sanitizeName(doc.Info.Title)
 	if namespace == "" {
 		namespace = "openapi"
 	}
 	log = log.With(slog.String("namespace", namespace))
 
-	// Determine host: Use config, or try from doc.Servers
-	host := g.DefaultHost
-	if host == "" && len(doc.Servers) > 0 {
-		// Use the first server URL as host. More robust logic might be needed.
-		firstServerURL, err := url.Parse(doc.Servers[0].URL)
-		if err == nil {
-			host = firstServerURL.Scheme + "://" + firstServerURL.Host
-			// TODO: Handle potential variables in server URL?
-		} else {
-			log.Warn("Warning: could not parse host from first server URL", slog.String("server_url", doc.Servers[0].URL), slog.Any("error", err))
-		}
-	}
-	if host == "" {
-		log.Warn("Warning: No host could be determined for OpenAPI schema. Invocation details might be incomplete.")
-		// Consider returning an error if host is essential?
-	}
-	log.Info("Determined host for generation", slog.String("host", host))
-
-	// Iterate through paths and operations to create tools
+	// Iterate through paths and operations to create tools.
 	generatedCount := 0
 	skippedCount := 0
 	for path, pathItem := range doc.Paths.Map() {
@@ -91,14 +81,14 @@ func (g *ToolGenerator) Generate(schema domain.APISchema) ([]domain.Tool, []usec
 
 			inputSchema, err := g.generateInputSchema(log, operation.Parameters, operation.RequestBody)
 			if err != nil {
-				log.Warn("Warning: skipping tool due to input schema generation error", slog.Any("error", err))
+				log.Warn("Warning: skipping tool due to input schema generation error.", slog.Any("error", err))
 				skippedCount++
 				continue
 			}
 
 			outputSchema, err := g.generateOutputSchema(log, operation.Responses)
 			if err != nil {
-				log.Warn("Warning: skipping tool due to output schema generation error", slog.Any("error", err))
+				log.Warn("Warning: skipping tool due to output schema generation error.", slog.Any("error", err))
 				skippedCount++
 				continue
 			}
@@ -111,25 +101,96 @@ func (g *ToolGenerator) Generate(schema domain.APISchema) ([]domain.Tool, []usec
 			}
 			tools = append(tools, tool)
 
-			// Generate InvocationDetails
-			details, err := g.generateInvocationDetails(log, host, path, method, operation)
+			// Generate InvocationDetails (passes the determined host and basePath)
+			details, err := g.generateInvocationDetails(log, host, basePath, path, method, operation)
 			if err != nil {
-				log.Warn("Warning: skipping tool due to invocation details generation error", slog.Any("error", err))
+				log.Warn("Warning: skipping tool due to invocation details generation error.", slog.Any("error", err))
 				// Remove the tool we just added if details generation failed?
-				tools = tools[:len(tools)-1]
+				if len(tools) > 0 {
+					tools = tools[:len(tools)-1]
+				}
 				skippedCount++
 				continue
 			}
 			detailsList = append(detailsList, *details)
 			generatedCount++
-			log.Debug("Successfully generated tool and details")
+			log.Debug("Successfully generated tool and details.")
 		}
 	}
 
-	log.Info("Finished generating tools from OpenAPI schema",
+	log.Info("Finished generating tools from OpenAPI schema.",
 		slog.Int("generated_count", generatedCount),
 		slog.Int("skipped_count", skippedCount))
 	return tools, detailsList, nil
+}
+
+// determineHostAndBasePathFromServers tries to find a suitable base URL from the Servers array.
+// It prioritizes HTTP/HTTPS URLs. If a relative URL is found, it resolves it
+// against the schemaSourceURL. Returns the first valid one found (scheme://host, basePath, error).
+// BasePath will be empty if the resolved URL has no path component.
+func (g *ToolGenerator) determineHostAndBasePathFromServers(schemaSourceURL string, servers openapi3.Servers) (string, string, error) {
+	if len(servers) == 0 {
+		// Fallback or configuration could be added here if desired
+		return "", "", fmt.Errorf("no servers defined in OpenAPI document")
+	}
+
+	baseSourceURL, err := url.Parse(schemaSourceURL)
+	if err != nil {
+		// Log the error but don't fail immediately, maybe an absolute server URL exists later
+		g.logger.Warn("Could not parse schema source URL as base for relative server URLs.", slog.String("source_url", schemaSourceURL), slog.Any("error", err))
+		baseSourceURL = nil // Ensure we don't accidentally use a broken base URL
+	}
+
+	for _, server := range servers {
+		if server == nil || server.URL == "" {
+			continue
+		}
+		// TODO: Add support for server variables substitution if needed.
+		serverURL := server.URL
+
+		parsedServerURL, err := url.Parse(serverURL)
+		if err != nil {
+			g.logger.Warn("Could not parse server URL, skipping.", slog.String("url", serverURL), slog.Any("error", err))
+			continue // Try next server
+		}
+
+		// Check if the parsed URL is absolute
+		isAbsolute := parsedServerURL.IsAbs()
+		resolvedURL := parsedServerURL // Assume absolute initially
+
+		if !isAbsolute {
+			// If relative, try to resolve it against the schema source URL
+			if baseSourceURL == nil {
+				g.logger.Warn("Cannot resolve relative server URL because schema source URL was unparsable.", slog.String("relative_url", serverURL), slog.String("source_url", schemaSourceURL))
+				continue // Try next server
+			}
+			// ResolveReference handles merging paths correctly
+			resolvedURL = baseSourceURL.ResolveReference(parsedServerURL)
+			g.logger.Debug("Resolved relative server URL",
+				slog.String("relative_url", serverURL),
+				slog.String("base_url", baseSourceURL.String()),
+				slog.String("resolved_url", resolvedURL.String()))
+		}
+
+		// Check if the (potentially resolved) URL is suitable
+		if (resolvedURL.Scheme == "http" || resolvedURL.Scheme == "https://") && resolvedURL.Host != "" {
+			// Found a suitable HTTP/HTTPS URL.
+			host := fmt.Sprintf("%s://%s", resolvedURL.Scheme, resolvedURL.Host)
+			basePath := resolvedURL.Path
+			// Clean the base path (remove trailing slash unless it's just "/")
+			if len(basePath) > 1 && strings.HasSuffix(basePath, "/") {
+				basePath = basePath[:len(basePath)-1]
+			}
+			return host, basePath, nil
+		}
+
+		// Log if an absolute URL was found but wasn't http/https
+		if isAbsolute {
+			g.logger.Debug("Skipping non-HTTP/HTTPS absolute server URL.", slog.String("url", serverURL))
+		}
+	}
+
+	return "", "", fmt.Errorf("no suitable HTTP/HTTPS server URL found or resolvable in OpenAPI document")
 }
 
 // generateToolName creates a unique and descriptive name for the tool.
@@ -356,16 +417,17 @@ func (g *ToolGenerator) convertSchemaRef(log *slog.Logger, ref *openapi3.SchemaR
 }
 
 // generateInvocationDetails creates the details needed to invoke the API endpoint.
-func (g *ToolGenerator) generateInvocationDetails(log *slog.Logger, host, path, method string, op *openapi3.Operation) (*usecase.InvocationDetails, error) {
+func (g *ToolGenerator) generateInvocationDetails(log *slog.Logger, host, basePath, path, method string, op *openapi3.Operation) (*usecase.InvocationDetails, error) {
 	details := usecase.InvocationDetails{
-		Type:         "http", // Or potentially "connect_http" if we can detect Connect patterns
-		Host:         host,
+		Type:        "http", // HTTP REST API
+		Host:        host,
+		BasePath:    basePath, // Store the extracted base path
 		HTTPMethod:   strings.ToUpper(method),
 		HTTPPath:     path,
 		PathParams:   []string{},
 		QueryParams:  []string{},
-		HeaderParams: make(map[string]string), // TODO: Add static headers from spec (e.g., security schemes)?
-		ContentType:  "application/json",      // Default assumption
+		HeaderParams: make(map[string]string),
+		ContentType:  "application/json", // Default assumption
 	}
 
 	// Extract parameter names by location
@@ -418,14 +480,28 @@ func (g *ToolGenerator) generateInvocationDetails(log *slog.Logger, host, path, 
 		} else {
 			// Handle other content types (e.g., form-urlencoded, plain text) if needed
 			// For now, stick to JSON or no body.
-			details.ContentType = ""
+			// Find the first defined content type?
+			firstContentType := ""
+			for contentType := range op.RequestBody.Value.Content {
+				firstContentType = contentType
+				break
+			}
+			if firstContentType != "" {
+				log.Debug("Using first available content type for non-JSON request body", slog.String("contentType", firstContentType))
+				details.ContentType = firstContentType
+				details.BodyParam = "requestBody" // Assume non-JSON maps to single input
+			} else {
+				details.ContentType = "" // No content type found
+				details.BodyParam = ""
+			}
 		}
 	} else {
 		// No request body defined
+		details.BodyParam = ""
 		details.ContentType = ""
 	}
 
-	return &details, nil
+	return &details, nil // Return the populated details
 }
 
 // --- Helpers ---

@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package calculator.v1;
+
+option go_package = "github.com/example/calculator/gen/calculator/v1;calculatorv1";
+
+// CalculatorService provides basic arithmetic operations
+service CalculatorService {
+  // Add performs addition of two numbers
+  rpc Add(AddRequest) returns (AddResponse) {}
+  
+  // Subtract performs subtraction of two numbers
+  rpc Subtract(SubtractRequest) returns (SubtractResponse) {}
+  
+  // Multiply performs multiplication of two numbers
+  rpc Multiply(MultiplyRequest) returns (MultiplyResponse) {}
+  
+  // Divide performs division of two numbers
+  rpc Divide(DivideRequest) returns (DivideResponse) {}
+  
+  // Calculate performs a calculation based on the expression
+  rpc Calculate(CalculateRequest) returns (CalculateResponse) {}
+}
+
+message AddRequest {
+  double a = 1;
+  double b = 2;
+}
+
+message AddResponse {
+  double result = 1;
+}
+
+message SubtractRequest {
+  double a = 1;
+  double b = 2;
+}
+
+message SubtractResponse {
+  double result = 1;
+}
+
+message MultiplyRequest {
+  double a = 1;
+  double b = 2;
+}
+
+message MultiplyResponse {
+  double result = 1;
+}
+
+message DivideRequest {
+  double a = 1;
+  double b = 2;
+}
+
+message DivideResponse {
+  double result = 1;
+  string error = 2; // Set if division by zero
+}
+
+message CalculateRequest {
+  string expression = 1; // e.g., "2 + 3 * 4"
+}
+
+message CalculateResponse {
+  double result = 1;
+  string error = 2; // Set if expression is invalid
+}

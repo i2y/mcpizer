@@ -1,0 +1,23 @@
+# Configuration for MCP Bridge Application
+
+# List of sources to fetch schemas from.
+# Each entry can be:
+# 1. A simple string (URL for OpenAPI or grpc:// target)
+# 2. An object with url and headers for authenticated endpoints
+schema_sources:
+  # Simple format (no authentication required)
+  - http://petstore:8080/api/v3/openapi.json
+  - grpc://grpcb.in:9000  # Public gRPC test service with reflection enabled
+  
+  # Object format with headers (for authenticated APIs)
+  # - url: https://api.example.com/v1/openapi.json
+  #   headers:
+  #     Authorization: "Bearer YOUR_API_TOKEN"
+  #     X-API-Key: "YOUR_API_KEY"
+  
+  # NOTE: gRPC reflection requires a service that explicitly enables it
+  # Most production gRPC services don't expose reflection for security reasons
+
+# Default host to use for OpenAPI tools if the schema doesn't specify server info.
+# This can also be overridden by the MCPIZER_OPENAPI_DEFAULT_HOST environment variable.
+# default_openapi_host: "http://petstore:8080" 

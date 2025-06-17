@@ -2,25 +2,38 @@ package usecase
 
 import (
 	"context"
+	"errors"
 
-	"mcp-bridge/internal/domain"
+	"github.com/i2y/mcpizer/internal/domain"
+	// Import mcp types needed for the adapter interface
+	"github.com/mark3labs/mcp-go/mcp"
+	// Import server type for the handler function
+	mcpGoServer "github.com/mark3labs/mcp-go/server"
 )
 
-// SchemaFetcher defines the contract for fetching API schemas from various sources.
-// Implementations will handle specific protocols like HTTP(S) for OpenAPI
-// or gRPC reflection endpoints.
-type SchemaFetcher interface {
-	// Fetch retrieves an API schema from the given source identifier (e.g., URL, gRPC target).
-	// It returns the domain representation of the schema or an error if fetching fails.
-	Fetch(ctx context.Context, src string) (domain.APISchema, error)
+// Standard errors returned by use cases and adapters.
+var (
+	ErrToolNotFound = errors.New("tool not found")
+	// TODO: Define other standard errors like ErrInvocationFailed, ErrSchemaFetchFailed etc.
+)
+
+// --- Schema Source Related ---
+
+// SchemaSourceConfig represents a schema source with optional configuration
+type SchemaSourceConfig struct {
+	URL     string
+	Headers map[string]string
 }
 
-// ToolGenerator defines the contract for converting a domain APISchema
-// into a slice of MCP-compliant Tools and their corresponding InvocationDetails.
-// Implementations will exist for each supported schema type (OpenAPI, gRPC).
+// SchemaFetcher defines the interface for fetching API schemas from various sources.
+type SchemaFetcher interface {
+	Fetch(ctx context.Context, source string) (domain.APISchema, error)
+	FetchWithConfig(ctx context.Context, config SchemaSourceConfig) (domain.APISchema, error)
+}
+
+// ToolGenerator defines the interface for generating Tools and InvocationDetails
+// from a fetched APISchema.
 type ToolGenerator interface {
-	// Generate transforms the provided API schema into a list of Tool definitions
-	// and the details needed to invoke them.
 	Generate(schema domain.APISchema) ([]domain.Tool, []InvocationDetails, error)
 }
 
@@ -42,3 +55,28 @@ type ToolRepository interface {
 	// FindInvocationDetailsByName retrieves the invocation details for a specific tool by name.
 	FindInvocationDetailsByName(ctx context.Context, name string) (*InvocationDetails, error)
 }
+
+// --- MCP Server Abstraction ---
+
+// MCPServerAdapter defines the interface required by the SyncSchemaUseCase
+// to interact with the underlying MCP server (like mcp-go).
+// This avoids direct dependency on a specific server implementation in the use case.
+type MCPServerAdapter interface {
+	// AddTool registers a tool and its handler with the server.
+	// The handlerFunc signature must match the expected signature of the specific
+	// MCP server library being adapted.
+	// Use the specific type from the mcp-go/server package.
+	AddTool(tool mcp.Tool, handlerFunc mcpGoServer.ToolHandlerFunc)
+	// TODO: Add other methods if SyncSchemaUseCase needs them (e.g., RemoveTool)
+}
+
+// --- Tool Invocation Related ---
+
+// InvocationDetails is defined in invoke_tool.go
+
+// ToolInvoker is defined in invoke_tool.go
+/*
+type ToolInvoker interface {
+	Invoke(ctx context.Context, details InvocationDetails, params map[string]interface{}) (interface{}, error)
+}
+*/

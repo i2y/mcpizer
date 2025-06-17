@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"mcp-bridge/internal/domain"
+	"github.com/i2y/mcpizer/internal/domain"
 )
 
 // ServeToolsUseCase provides the functionality to list available tools.

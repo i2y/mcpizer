@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"sync"
 
-	"mcp-bridge/internal/domain"
-	"mcp-bridge/internal/usecase"
+	"github.com/i2y/mcpizer/internal/domain"
+	"github.com/i2y/mcpizer/internal/usecase"
 )
 
 // InMemoryToolRepository provides an in-memory implementation of the ToolRepository.
@@ -37,7 +37,7 @@ func (r *InMemoryToolRepository) Save(ctx context.Context, tools []domain.Tool, 
 	if len(tools) != len(details) {
 		msg := fmt.Sprintf("mismatch between number of tools (%d) and invocation details (%d)", len(tools), len(details))
 		r.logger.Error("Failed to save tools and details", slog.String("reason", msg))
-		return fmt.Errorf(msg)
+		return fmt.Errorf("save failed: %s", msg)
 	}
 
 	count := 0
@@ -75,7 +75,7 @@ func (r *InMemoryToolRepository) FindToolByName(ctx context.Context, name string
 	tool, ok := r.tools[name]
 	if !ok {
 		r.logger.Warn("Tool definition not found", slog.String("tool_name", name))
-		return nil, fmt.Errorf("tool '%s' not found", name)
+		return nil, usecase.ErrToolNotFound
 	}
 	r.logger.Debug("Found tool definition", slog.String("tool_name", name))
 	return &tool, nil
@@ -89,7 +89,7 @@ func (r *InMemoryToolRepository) FindInvocationDetailsByName(ctx context.Context
 	details, ok := r.invocationDetails[name]
 	if !ok {
 		r.logger.Warn("Invocation details not found", slog.String("tool_name", name))
-		return nil, fmt.Errorf("invocation details for tool '%s' not found", name)
+		return nil, usecase.ErrToolNotFound
 	}
 	r.logger.Debug("Found invocation details", slog.String("tool_name", name))
 	return &details, nil

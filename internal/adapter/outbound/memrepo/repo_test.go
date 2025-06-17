@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"mcp-bridge/internal/adapter/outbound/memrepo"
-	"mcp-bridge/internal/domain"
-	"mcp-bridge/internal/usecase"
+	"github.com/i2y/mcpizer/internal/adapter/outbound/memrepo"
+	"github.com/i2y/mcpizer/internal/domain"
+	"github.com/i2y/mcpizer/internal/usecase"
 )
 
 func newTestRepo(t *testing.T) *memrepo.InMemoryToolRepository {
@@ -116,8 +116,8 @@ func TestInMemoryToolRepository_FindByName(t *testing.T) {
 		inName         string
 		wantTool       *domain.Tool
 		wantDetails    *usecase.InvocationDetails
-		wantFindErr    bool
-		wantDetailsErr bool
+		wantFindErr    bool // Indicates if any error is expected for FindToolByName
+		wantDetailsErr bool // Indicates if any error is expected for FindInvocationDetailsByName
 	}{
 		{
 			name:        "Find existing tool1",
@@ -136,8 +136,8 @@ func TestInMemoryToolRepository_FindByName(t *testing.T) {
 			inName:         "tool3",
 			wantTool:       nil,
 			wantDetails:    nil,
-			wantFindErr:    true,
-			wantDetailsErr: true,
+			wantFindErr:    true, // Expecting ErrToolNotFound
+			wantDetailsErr: true, // Expecting ErrToolNotFound
 		},
 	}
 
@@ -145,7 +145,8 @@ func TestInMemoryToolRepository_FindByName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			actualTool, err := repo.FindToolByName(ctx, tt.inName)
 			if tt.wantFindErr {
-				assert.Error(err)
+				// Check for the specific expected error
+				assert.ErrorIs(err, usecase.ErrToolNotFound, "Expected ErrToolNotFound for FindToolByName")
 				assert.Nil(actualTool)
 			} else {
 				assert.NoError(err)
@@ -154,7 +155,8 @@ func TestInMemoryToolRepository_FindByName(t *testing.T) {
 
 			actualDetails, err := repo.FindInvocationDetailsByName(ctx, tt.inName)
 			if tt.wantDetailsErr {
-				assert.Error(err)
+				// Check for the specific expected error
+				assert.ErrorIs(err, usecase.ErrToolNotFound, "Expected ErrToolNotFound for FindInvocationDetailsByName")
 				assert.Nil(actualDetails)
 			} else {
 				assert.NoError(err)

@@ -1,0 +1,167 @@
+run:
+  # Timeout for analysis, e.g. 30s, 5m, default is 1m
+  timeout: 5m
+  # Exit code when issues were found, default is 1
+  issues-exit-code: 1
+  # Include test files or not, default is true
+  tests: true
+  # List of build tags, all linters use it. Default is empty list.
+  # build-tags:
+  #   - mytag
+
+# output:
+#   format: colored-line-number
+#   print-issued-lines: true
+#   print-linter-name: true
+#   uniq-by-line: true
+
+linters_settings:
+  govet:
+    # Enable all analyzers.
+    # Default: false
+    enable-all: true
+    # Disable specific analyzers.
+    disable:
+      - fieldalignment # Often overly strict
+      - shadow # Can be noisy in idiomatic Go
+    # Settings for analyzers.
+    settings:
+      printf:
+        funcs:
+          - fmt.Errorf
+          - fmt.Sprintf
+          - fmt.Fprintf
+          - log.Printf
+          - log.Fatalf
+          - log.Panicf
+          - slog.Info
+          - slog.Warn
+          - slog.Error
+          - slog.Debug
+    check-shadowing: true
+  gocyclo:
+    # Minimal code complexity to report. Default is 30.
+    min-complexity: 15
+  maligned:
+    # Suggest new layout for structs.
+    suggest-new: true
+  dupl:
+    # Threshold for duplication
+    threshold: 100
+  goconst:
+    # Minimal length of string constant. Default is 3.
+    min-len: 2
+    # Minimal occurrences count to name string constant. Default is 3.
+    min-occurrences: 3
+  misspell:
+    # Correct spellings using locale preferences. Available Options: US, UK
+    locale: US
+  lll:
+    # Max line length, lines longer will be reported. Default is 120.
+    line-length: 140
+    # Tab width in spaces. Default is 1.
+    tab-width: 4
+  unused:
+    # Check for unused constants, functions, types and variables.
+    check-exported: false
+  unparam:
+    # Inspect exported functions, default is false.
+    check-exported: false
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - whyNoLint
+      - wrapperFunc
+  errcheck:
+    # Report about not checking of errors in type assertions: `a := b.(MyStruct)`. Default is false.
+    check-type-assertions: true
+    # Report about assignment of errors to blank identifier: `_ = returnsErr()`. Default is false.
+    check-blank: true
+  goimports:
+    local-prefixes: mcp-bridge # Adjust if your module path is different
+
+linters:
+  # Disable all linters by default and enable specific ones.
+  disable_all: true
+  enable:
+    # Core linters
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - structcheck
+    - varcheck
+    - ineffassign
+    - typecheck
+
+    # Style & Complexity
+    - gocyclo
+    - goconst
+    - gocritic
+    - gofmt
+    - goimports
+    - lll
+    - misspell
+    - unparam
+
+    # Other useful linters
+    # - dupl # Can be noisy
+    - bodyclose
+    - durationcheck
+    - errorlint
+    - exportloopref
+    - makezero
+    - nilerr
+    - rowserrcheck
+    - sqlclosecheck
+    - testpackage
+    - unconvert
+    - wastedassign
+    - whitespace
+
+issues:
+  # Exclude specific errors globally.
+  exclude:
+    - "Error return value of .*(os\.)?Stdin(\.Close)?.*is not checked" # Stdin/out/err checks often noisy
+    - "Error return value of .*(os\.)?Stdout(\.Close)?.*is not checked"
+    - "Error return value of .*(os\.)?Stderr(\.Close)?.*is not checked"
+
+  exclude-rules:
+    # Exclude some linters from running on test files.
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - goconst
+
+  # Maximum issues count per one linter. Set to 0 to disable. Default is 50.
+  max-issues-per-linter: 0
+  # Maximum count of issues with the same text. Set to 0 to disable. Default is 3.
+  max-same-issues: 0
+  # Exclude configuration.
+  exclude_rules:
+    # Exclude some linters from running on test files.
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        # - dupl # Disabled above
+        - gosec # Need to enable gosec if used here
+        - goconst
+
+    # Exclude specific issues
+    # Example:
+    # - linters: [staticcheck]
+    #   text: "SA9003: empty branch"
+
+  # Set Go version compatibility.
+  # Ensure this matches your go.mod version or higher.
+  # go: "1.22" 
+  

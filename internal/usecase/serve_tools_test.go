@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"mcp-bridge/internal/domain"
-	"mcp-bridge/internal/usecase"
+	"github.com/i2y/mcpizer/internal/domain"
+	"github.com/i2y/mcpizer/internal/usecase"
 )
 
 // MockToolRepository is a mock implementation of the ToolRepository interface.
@@ -124,4 +124,4 @@ func TestServeToolsUseCase_Execute(t *testing.T) {
 			mockRepo.AssertExpectations(t) // Verify mock interactions
 		})
 	}
-} 
+}

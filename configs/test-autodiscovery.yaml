@@ -1,0 +1,14 @@
+# Test configuration for OpenAPI auto-discovery
+schema_sources:
+  # Direct schema URL (existing behavior)
+  - http://localhost:8082/api/v3/openapi.json
+  
+  # Base URL - should auto-discover FastAPI schema
+  - http://localhost:8000
+  
+  # Another example with a different port
+  - http://localhost:3000
+  
+  # gRPC with reflection
+  - grpc://grpcb.in:9000
+  

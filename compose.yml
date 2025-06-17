@@ -1,0 +1,60 @@
+# Development environment with example services
+# This compose file is for testing MCPizer with sample APIs
+# Not required for normal MCPizer usage
+
+services:
+  mcpizer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      # TODO: Expose the application's main port when the inbound adapter is implemented
+      - "8090:8080" # Assuming main app port is 8080 (changed to avoid conflict)
+      - "8091:8081" # Admin API port
+    environment:
+      # OTel
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4317"
+      OTEL_SERVICE_NAME: "mcpizer"
+      OTEL_EXPORTER_OTLP_INSECURE: "true"
+      # Configs (Using MCPIZER_ prefix required by envconfig)
+      MCPIZER_LISTEN_ADDR: ":8080"
+      MCPIZER_HTTP_CLIENT_TIMEOUT: "30s"
+      MCPIZER_SERVER_READ_TIMEOUT: "5s"
+      MCPIZER_SERVER_WRITE_TIMEOUT: "10s"
+      MCPIZER_SERVER_IDLE_TIMEOUT: "120s"
+      MCPIZER_LOG_LEVEL: "debug"
+      # Config file path inside the container
+      MCPIZER_CONFIG_FILE: "/app/configs/mcpizer.yaml"
+      # MCPIZER_SCHEMA_SOURCES: ... # Removed, now loaded from file via MCPIZER_CONFIG_FILE
+    volumes:
+      # Mount local config file into the container
+      - ./configs/mcpizer.yaml:/app/configs/mcpizer.yaml:ro # Read-only mount
+    depends_on:
+      - jaeger
+      - petstore # OpenAPI service
+
+  jaeger:
+    image: jaegertracing/jaeger:2.3.0
+    ports:
+      - "16687:16686" # Jaeger UI (changed to avoid conflict)
+      - "4327:4317"   # OTLP gRPC receiver (changed to avoid conflict)
+      - "4328:4318"   # OTLP HTTP receiver (changed to avoid conflict)
+
+  # Example Connect RPC service (Eliza Demo)
+  eliza:
+    image: bhanji/connect-rpc-example:latest # Changed from bufbuild/connect-demo
+    ports:
+      # Expose Eliza's port if needed for direct access/debugging
+      - "8083:8080" # Main Connect service port
+      - "50052:50051" # Add mapping for potential gRPC reflection port (changed to avoid conflict)
+
+  # Example OpenAPI service (Swagger Petstore)
+  petstore:
+    image: swaggerapi/petstore3:latest # Serves OpenAPI spec at /v3/api-docs
+    ports:
+      # Expose Petstore's port if needed for direct access/debugging
+      - "8082:8080" # Exposes on host 8082, container port is 8080
+    environment:
+      # Petstore image uses this env var to set the base path
+      SWAGGER_BASE_PATH: "/"
+      # This image seems to default to port 8080 inside the container
