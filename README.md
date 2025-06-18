@@ -464,20 +464,20 @@ flowchart LR
     end
     
     subgraph "MCPizer Config"
-        Config["~/.mcpizer.yaml<br/>schema_sources:<br/>- http://my-fastapi:8000"]
+        Config["~/.mcpizer.yaml<br/>schema_sources:<br/>http://my-fastapi:8000"]
     end
     
     subgraph "MCPizer Process"
-        Discover["1. Discover schema<br/>at /openapi.json"]
-        Convert["2. Convert endpoints<br/>to MCP tools"]
-        Register["3. Register tools<br/>with MCP protocol"]
+        Discover["(1) Discover schema<br/>at /openapi.json"]
+        Convert["(2) Convert endpoints<br/>to MCP tools"]
+        Register["(3) Register tools<br/>with MCP protocol"]
         
         Discover --> Convert
         Convert --> Register
     end
     
     subgraph "AI Assistant"
-        List["List tools:<br/>- get_item<br/>- create_item<br/>- update_item"]
+        List["List tools:<br/>• get_item<br/>• create_item<br/>• update_item"]
         Call["Call: get_item<br/>{item_id: 123}"]
         Result["Result:<br/>{id: 123, name: 'Test'}"]
         
