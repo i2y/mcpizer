@@ -198,6 +198,71 @@ schema_sources:
   - https://api.example.com/v3/openapi.yaml
 ```
 
+### Separate Schema Files and API Servers
+
+MCPizer supports OpenAPI schema files that are hosted separately from the actual API server. This is useful when:
+
+1. **The API doesn't expose its own schema** - You can write an OpenAPI spec for any API
+2. **Schema is managed separately** - Documentation team maintains schemas independently
+3. **Multiple environments** - One schema file for dev/staging/production APIs
+
+**How it works:**
+```yaml
+schema_sources:
+  # Schema file points to production API
+  - https://docs.company.com/api/v1/openapi.yaml
+  
+  # Local schema file for external API
+  - ./schemas/third-party-api.yaml
+```
+
+The OpenAPI spec contains server URLs:
+```yaml
+servers:
+  - url: https://api.production.com
+    description: Production server
+  - url: https://api.staging.com
+    description: Staging server
+```
+
+MCPizer will:
+1. Fetch the schema from the schema_sources URL
+2. Read the `servers` section from the OpenAPI spec
+3. Use the first available server URL for actual API calls
+
+**Example: Creating OpenAPI spec for an API without documentation**
+
+If you have an API at `https://internal-api.company.com` that doesn't provide OpenAPI:
+
+1. Write your own OpenAPI spec:
+```yaml
+openapi: 3.0.0
+info:
+  title: Internal API
+  version: 1.0.0
+servers:
+  - url: https://internal-api.company.com
+paths:
+  /users:
+    get:
+      summary: List users
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: {type: integer}
+                    name: {type: string}
+```
+
+2. Host it anywhere (GitHub, S3, local file)
+3. Point MCPizer to your schema file
+
 ### Auto-Discovery Process
 
 ```mermaid
