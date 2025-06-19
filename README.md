@@ -118,20 +118,20 @@ schema_sources:
   - grpc://grpcb.in:9000
 ```
 
-### Step 2: Choose Your Use Case
+### Step 2: Choose Your Transport Mode
 
-#### 🤖 **For Claude Desktop**
+MCPizer supports two transport modes:
 
-Add MCPizer to your Claude Desktop configuration file:
+#### 📝 **STDIO Mode** (for clients that manage process lifecycle)
 
-**macOS:**
-`~/Library/Application Support/Claude/claude_desktop_config.json`
+Used by clients that start MCPizer as a subprocess and communicate via standard input/output.
 
-**Windows:**
-`%APPDATA%\Claude\claude_desktop_config.json`
+**Example: Claude Desktop**
 
-**Linux:**
-`~/.config/Claude/claude_desktop_config.json`
+Add to your configuration file:
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux:** `~/.config/Claude/claude_desktop_config.json`
 
 ```json
 {
@@ -144,16 +144,22 @@ Add MCPizer to your Claude Desktop configuration file:
 }
 ```
 
-Restart Claude Desktop. Ask Claude: "What APIs are available?" or "Create a new pet named Fluffy"
+The client will start MCPizer automatically when needed.
 
-#### 💻 **For VS Code (Continue, Cody, etc.)**
+#### 🌐 **SSE Mode** (Server-Sent Events over HTTP)
 
-1. Start MCPizer:
-   ```bash
-   mcpizer
-   ```
+Used by clients that connect to a running MCPizer server via HTTP.
 
-2. Configure your extension to use `http://localhost:8080/sse`
+```bash
+# Start MCPizer server (if your client doesn't start it automatically)
+mcpizer
+
+# Server runs at http://localhost:8080/sse
+```
+
+Configure your MCP client to connect to `http://localhost:8080/sse`
+
+Note: Some clients may start the server automatically, while others require manual startup.
 
 #### 🧪 **For Testing/Development**
 
