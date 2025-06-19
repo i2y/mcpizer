@@ -65,7 +65,7 @@ func (g *ToolGenerator) generateFromServiceInfos(source string, serviceInfos []S
 		for _, method := range serviceInfo.Methods {
 			// Skip streaming methods for now (require more complex handling)
 			if method.ClientStreaming || method.ServerStreaming {
-				log.Warn("Skipping streaming method", 
+				log.Warn("Skipping streaming method",
 					slog.String("service", serviceInfo.Name),
 					slog.String("method", method.Name))
 				continue
@@ -78,15 +78,15 @@ func (g *ToolGenerator) generateFromServiceInfos(source string, serviceInfos []S
 			if len(servicePart) > 20 {
 				servicePart = servicePart[:20]
 			}
-			
+
 			methodPart := method.Name
 			if len(methodPart) > 20 {
 				methodPart = methodPart[:20]
 			}
-			
+
 			// Create tool name
 			toolName := fmt.Sprintf("%s-%s", strings.ToLower(servicePart), strings.ToLower(methodPart))
-			
+
 			// Final safety check - ensure it's under 50 chars (well below 64 limit)
 			if len(toolName) > 50 {
 				h := fnv.New32a()
@@ -95,7 +95,7 @@ func (g *ToolGenerator) generateFromServiceInfos(source string, serviceInfos []S
 				// Keep first 40 chars and add 5-char hash
 				toolName = toolName[:40] + "-" + hash
 			}
-			
+
 			log.Debug("Generated tool name",
 				slog.String("service", serviceInfo.Name),
 				slog.String("method", method.Name),
@@ -143,13 +143,12 @@ func (g *ToolGenerator) generateFromServiceNamesLegacy(source string, serviceNam
 	log := g.logger.With(slog.String("source", source))
 	log.Warn("gRPC tool generation is currently a placeholder. Creating dummy tools based on service names only.")
 
-	
 	for _, serviceName := range serviceNames {
 		// Placeholder: Create one dummy tool per service
 		namespace := sanitizeProtoName(serviceName)
 		methodName := "invoke"
 		toolName := fmt.Sprintf("%s-%s", namespace, methodName)
-		
+
 		// Limit tool name length
 		if len(toolName) > 64 {
 			h := fnv.New32a()
@@ -200,9 +199,9 @@ func convertProtoToJSONSchema(descriptor *descriptorpb.DescriptorProto, typeName
 	for _, field := range descriptor.Field {
 		fieldName := field.GetName()
 		fieldSchema := protoFieldToJSONSchema(field)
-		
+
 		properties[fieldName] = fieldSchema
-		
+
 		// In proto3, all fields are optional by default
 		// Only add to required if it has specific annotations (future enhancement)
 	}
@@ -237,7 +236,7 @@ func protoTypeToJSONSchema(protoType descriptorpb.FieldDescriptorProto_Type) dom
 	case descriptorpb.FieldDescriptorProto_TYPE_DOUBLE,
 		descriptorpb.FieldDescriptorProto_TYPE_FLOAT:
 		return domain.JSONSchemaProps{Type: "number"}
-		
+
 	case descriptorpb.FieldDescriptorProto_TYPE_INT64,
 		descriptorpb.FieldDescriptorProto_TYPE_UINT64,
 		descriptorpb.FieldDescriptorProto_TYPE_INT32,
@@ -249,27 +248,27 @@ func protoTypeToJSONSchema(protoType descriptorpb.FieldDescriptorProto_Type) dom
 		descriptorpb.FieldDescriptorProto_TYPE_SFIXED32,
 		descriptorpb.FieldDescriptorProto_TYPE_SFIXED64:
 		return domain.JSONSchemaProps{Type: "integer"}
-		
+
 	case descriptorpb.FieldDescriptorProto_TYPE_BOOL:
 		return domain.JSONSchemaProps{Type: "boolean"}
-		
+
 	case descriptorpb.FieldDescriptorProto_TYPE_STRING:
 		return domain.JSONSchemaProps{Type: "string"}
-		
+
 	case descriptorpb.FieldDescriptorProto_TYPE_BYTES:
 		return domain.JSONSchemaProps{
 			Type:   "string",
 			Format: "byte", // Base64 encoded bytes
 		}
-		
+
 	case descriptorpb.FieldDescriptorProto_TYPE_MESSAGE:
 		// Nested messages - would need more context to properly convert
 		return domain.JSONSchemaProps{Type: "object"}
-		
+
 	case descriptorpb.FieldDescriptorProto_TYPE_ENUM:
 		// Enums - would need enum descriptor for values
 		return domain.JSONSchemaProps{Type: "string"}
-		
+
 	default:
 		return domain.JSONSchemaProps{Type: "string"}
 	}
@@ -285,7 +284,7 @@ func sanitizeProtoName(name string) string {
 		// Take only the last 2 parts for namespace
 		name = strings.Join(parts[len(parts)-2:], ".")
 	}
-	
+
 	name = strings.ToLower(name)
 	replacer := strings.NewReplacer(".", "-", "_", "-") // Replace proto separators
 	name = replacer.Replace(name)
@@ -293,11 +292,11 @@ func sanitizeProtoName(name string) string {
 		name = strings.ReplaceAll(name, "--", "-")
 	}
 	name = strings.Trim(name, "-")
-	
+
 	// Further limit length
 	if len(name) > 30 {
 		name = name[:30]
 	}
-	
+
 	return name
 }

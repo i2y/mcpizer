@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/i2y/mcpizer/internal/usecase"
-
 )
 
 // Invoker implements the usecase.ToolInvoker interface using standard net/http.
@@ -154,7 +153,7 @@ func (i *Invoker) Invoke(ctx context.Context, details usecase.InvocationDetails,
 	if requestBody != nil && details.ContentType != "" {
 		req.Header.Set("Content-Type", details.ContentType)
 	}
-	
+
 	// Add headers from HeaderParams
 	for key, value := range details.HeaderParams {
 		req.Header.Set(key, value)

@@ -24,13 +24,13 @@ type ServiceInfo struct {
 
 // MethodInfo contains information about a gRPC method
 type MethodInfo struct {
-	Name              string
-	InputType         string
-	OutputType        string
-	ClientStreaming   bool
-	ServerStreaming   bool
-	InputDescriptor   *descriptorpb.DescriptorProto
-	OutputDescriptor  *descriptorpb.DescriptorProto
+	Name             string
+	InputType        string
+	OutputType       string
+	ClientStreaming  bool
+	ServerStreaming  bool
+	InputDescriptor  *descriptorpb.DescriptorProto
+	OutputDescriptor *descriptorpb.DescriptorProto
 }
 
 // FetchWithMethods connects to a gRPC endpoint, uses the reflection service to list services and their methods,
@@ -99,22 +99,22 @@ func (f *SchemaFetcher) FetchWithMethods(ctx context.Context, src string) (domai
 		if service != nil && service.Name != "grpc.reflection.v1alpha.ServerReflection" {
 			// Get file descriptor for each service
 			log.Debug("Fetching file descriptor for service", slog.String("service", service.Name))
-			
+
 			if err := stream.Send(&reflectpb.ServerReflectionRequest{
 				MessageRequest: &reflectpb.ServerReflectionRequest_FileContainingSymbol{
 					FileContainingSymbol: service.Name,
 				},
 			}); err != nil {
-				log.Error("Failed to send FileContainingSymbol request", 
-					slog.String("service", service.Name), 
+				log.Error("Failed to send FileContainingSymbol request",
+					slog.String("service", service.Name),
 					slog.Any("error", err))
 				continue
 			}
 
 			resp, err := stream.Recv()
 			if err != nil {
-				log.Error("Failed to receive FileContainingSymbol response", 
-					slog.String("service", service.Name), 
+				log.Error("Failed to receive FileContainingSymbol response",
+					slog.String("service", service.Name),
 					slog.Any("error", err))
 				continue
 			}
@@ -128,20 +128,20 @@ func (f *SchemaFetcher) FetchWithMethods(ctx context.Context, src string) (domai
 			// Parse the file descriptors to extract service methods
 			serviceInfo, err := f.parseServiceInfo(service.Name, fileResp.FileDescriptorProto)
 			if err != nil {
-				log.Error("Failed to parse service info", 
-					slog.String("service", service.Name), 
+				log.Error("Failed to parse service info",
+					slog.String("service", service.Name),
 					slog.Any("error", err))
 				continue
 			}
 
 			serviceInfos = append(serviceInfos, serviceInfo)
-			log.Debug("Successfully parsed service info", 
+			log.Debug("Successfully parsed service info",
 				slog.String("service", service.Name),
 				slog.Int("method_count", len(serviceInfo.Methods)))
 		}
 	}
 
-	log.Info("Successfully fetched gRPC service information", 
+	log.Info("Successfully fetched gRPC service information",
 		slog.Int("service_count", len(serviceInfos)))
 
 	return domain.APISchema{
@@ -190,7 +190,7 @@ func (f *SchemaFetcher) parseServiceInfo(serviceName string, fileDescriptorProto
 					// Try to find input/output descriptors
 					inputTypeName := strings.TrimPrefix(method.GetInputType(), ".")
 					outputTypeName := strings.TrimPrefix(method.GetOutputType(), ".")
-					
+
 					if inputDesc, ok := messageTypes[inputTypeName]; ok {
 						methodInfo.InputDescriptor = inputDesc
 					}
@@ -212,10 +212,10 @@ func (f *SchemaFetcher) parseServiceInfo(serviceName string, fileDescriptorProto
 func (f *SchemaFetcher) FetchWithConfigAndMethods(ctx context.Context, config usecase.SchemaSourceConfig) (domain.APISchema, error) {
 	log := f.logger.With(slog.String("source", config.URL))
 	if len(config.Headers) > 0 {
-		log.Warn("gRPC schema fetching does not support custom headers for reflection calls", 
+		log.Warn("gRPC schema fetching does not support custom headers for reflection calls",
 			slog.Int("header_count", len(config.Headers)))
 	}
-	
+
 	// gRPC reflection doesn't typically require authentication headers
 	// For now, we just delegate to the regular FetchWithMethods method
 	return f.FetchWithMethods(ctx, config.URL)

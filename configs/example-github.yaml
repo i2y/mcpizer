@@ -1,0 +1,21 @@
+# Example MCPizer configuration using GitHub-hosted OpenAPI schemas
+schema_sources:
+  # GitHub-hosted OpenAPI schemas using github:// URLs
+  # These use the gh CLI for authentication, so they work with private repos
+  
+  # Public repository examples
+  - github://github/rest-api-description/descriptions/api.github.com/api.github.com.yaml
+  - github://kubernetes/kubernetes/api/openapi-spec/swagger.json@master
+  
+  # Example with a specific branch/tag
+  - github://myorg/api-specs/services/user-api/openapi.yaml@v1.2.3
+  
+  # Private repository (requires gh auth login)
+  # - github://mycompany/private-api-specs/internal/billing-api.yaml
+  
+  # You can also mix with regular URLs
+  - https://petstore3.swagger.io/api/v3/openapi.json
+  - http://localhost:8000  # Local FastAPI app
+  
+# To use a GitHub-hosted config file:
+# export MCPIZER_CONFIG_FILE=github://myorg/configs/mcpizer-prod.yaml

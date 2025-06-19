@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/i2y/mcpizer/internal/adapter/outbound/github"
 	"github.com/kelseyhightower/envconfig"
 	"gopkg.in/yaml.v3" // Added YAML parser
 )
@@ -75,24 +76,39 @@ func Load() (*Config, error) {
 	// 2. Load config from YAML file if path is specified
 	fileCfg := FileConfig{} // Defaults for file-based settings
 	if initialCfg.ConfigFilePath != "" {
-		yamlFile, err := os.ReadFile(initialCfg.ConfigFilePath)
-		if err != nil {
-			// Allow file not existing if path is default and it's just not created?
-			// Or maybe error strictly. Let's error strictly for now.
-			return nil, fmt.Errorf("failed to read config file '%s': %w", initialCfg.ConfigFilePath, err)
+		var yamlFile []byte
+		var err error
+
+		// Check if the config path is a GitHub URL
+		if strings.HasPrefix(initialCfg.ConfigFilePath, "github://") {
+			// Use the github package's helper function
+			yamlFile, err = github.LoadGitHubConfig(initialCfg.ConfigFilePath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load config from GitHub '%s': %w", initialCfg.ConfigFilePath, err)
+			}
+			slog.Info("Loaded configuration from GitHub.", "url", initialCfg.ConfigFilePath)
+		} else {
+			// Regular file path
+			yamlFile, err = os.ReadFile(initialCfg.ConfigFilePath)
+			if err != nil {
+				// Allow file not existing if path is default and it's just not created?
+				// Or maybe error strictly. Let's error strictly for now.
+				return nil, fmt.Errorf("failed to read config file '%s': %w", initialCfg.ConfigFilePath, err)
+			}
+			slog.Info("Loaded configuration from file.", "path", initialCfg.ConfigFilePath)
 		}
+
 		err = yaml.Unmarshal(yamlFile, &fileCfg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal config file '%s': %w", initialCfg.ConfigFilePath, err)
 		}
-		slog.Info("Loaded configuration from file.", "path", initialCfg.ConfigFilePath)
 	} else {
 		slog.Info("No config file path specified (MCPIZER_CONFIG_FILE), using defaults/env vars only.")
 	}
 
 	// 3. Create final config, starting with file values, then process Env vars again for overrides.
 	finalCfg := initialCfg // Start with initial env vars (like file path itself)
-	
+
 	// Parse SchemaSources - support both string and object formats
 	finalCfg.SchemaSources = make([]SchemaSource, 0, len(fileCfg.SchemaSources))
 	for _, source := range fileCfg.SchemaSources {

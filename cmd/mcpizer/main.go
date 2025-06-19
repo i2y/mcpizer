@@ -23,6 +23,7 @@ import (
 	"github.com/i2y/mcpizer/internal/usecase"
 
 	// Import outbound adapters needed for syncUC
+	"github.com/i2y/mcpizer/internal/adapter/outbound/github"
 	grpcadapter "github.com/i2y/mcpizer/internal/adapter/outbound/grpc"
 
 	// "github.com/i2y/mcpizer/internal/adapter/inbound/mcphttp" // Replaced by mcp-go server
@@ -124,9 +125,11 @@ func main() {
 	// --- Schema Fetchers (Outbound - Needed by Sync Use Case) ---
 	openapiFetcher := openapi.NewSchemaFetcher(httpClient, logger)
 	grpcFetcher := grpcadapter.NewSchemaFetcher(logger)
+	githubFetcher := github.NewFetcher(logger)
 	fetchers := map[domain.SchemaType]usecase.SchemaFetcher{
 		domain.SchemaTypeOpenAPI: openapiFetcher,
 		domain.SchemaTypeGRPC:    grpcFetcher,
+		domain.SchemaTypeGitHub:  githubFetcher,
 	}
 	logger.Debug("Schema fetchers initialized.")
 

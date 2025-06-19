@@ -101,8 +101,10 @@ schema_sources:
   - https://api.mycompany.com              # Auto-discovers OpenAPI
   - https://api.example.com/openapi.json   # Direct schema URL
   
-  # GitHub-hosted schemas (great for APIs without built-in schemas)
-  - https://raw.githubusercontent.com/myorg/api-specs/main/user-api.yaml
+  # GitHub-hosted schemas (NEW: use github:// URLs)
+  - github://myorg/api-specs/main/user-api.yaml     # Uses gh CLI auth
+  - github://OAI/OpenAPI-Specification/examples/v3.0/petstore.yaml@master
+  - https://raw.githubusercontent.com/myorg/api-specs/main/user-api.yaml  # Direct URL also works
   
   # Internal services (FastAPI, Spring Boot, etc.)
   - http://my-fastapi-app:8000     # Auto-discovers at /openapi.json, /docs
@@ -340,11 +342,35 @@ schema_sources:
   - /path/to/openapi.yaml
 ```
 
+### GitHub Integration (NEW!)
+
+MCPizer can now fetch OpenAPI schemas directly from GitHub repositories using the `gh` CLI tool:
+
+```yaml
+schema_sources:
+  # GitHub URLs - automatically uses gh CLI authentication
+  - github://owner/repo/path/to/openapi.yaml
+  - github://microsoft/api-guidelines/graph/openapi.yaml@v1.0
+  
+  # Load MCPizer config itself from GitHub!
+  # Set MCPIZER_CONFIG_FILE=github://myorg/configs/mcpizer.yaml
+```
+
+**Benefits:**
+- ✅ Works with private repositories (uses `gh` authentication)
+- ✅ Specify branches/tags with `@ref` syntax
+- ✅ No need to manage raw GitHub URLs or tokens
+- ✅ Config files can also be stored in GitHub
+
+**Requirements:**
+- Install GitHub CLI: `brew install gh` (macOS) or [see docs](https://cli.github.com/)
+- Authenticate: `gh auth login`
+
 ### Environment Variables
 
 | Variable | Default | When to use |
 |----------|---------|-------------|
-| `MCPIZER_CONFIG_FILE` | `~/.mcpizer.yaml` | Different config per environment |
+| `MCPIZER_CONFIG_FILE` | `~/.mcpizer.yaml` | Different config per environment<br/>Can be `github://` URL! |
 | `MCPIZER_LOG_LEVEL` | `info` | Set to `debug` for troubleshooting |
 | `MCPIZER_LOG_FILE` | `/tmp/mcpizer.log` | Change log location (STDIO mode) |
 | `MCPIZER_LISTEN_ADDR` | `:8080` | Change port (SSE mode) |

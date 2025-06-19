@@ -87,7 +87,7 @@ func (i *Invoker) InvokeGRPC(ctx context.Context, target, service, method string
 
 	// Create a buffer to capture formatted responses
 	var respBuf bytes.Buffer
-	
+
 	// Create event handler that writes formatted responses
 	eventHandler := &grpcurl.DefaultEventHandler{
 		Out:       &respBuf,
@@ -111,7 +111,7 @@ func (i *Invoker) InvokeGRPC(ctx context.Context, target, service, method string
 	if err != nil {
 		// Check if it's a gRPC status error
 		if st, ok := status.FromError(err); ok {
-			log.Error("gRPC call failed", 
+			log.Error("gRPC call failed",
 				slog.String("code", st.Code().String()),
 				slog.String("message", st.Message()),
 			)

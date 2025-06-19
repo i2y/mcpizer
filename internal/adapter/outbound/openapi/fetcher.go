@@ -149,12 +149,12 @@ func (f *SchemaFetcher) FetchWithConfig(ctx context.Context, config usecase.Sche
 			log.Error("Failed to create HTTP request", slog.Any("error", reqErr))
 			return domain.APISchema{}, fmt.Errorf("failed to create request for %s: %w", config.URL, reqErr)
 		}
-		
+
 		// Add custom headers
 		for key, value := range config.Headers {
 			req.Header.Set(key, value)
 		}
-		
+
 		resp, httpErr := f.httpClient.Do(req)
 		if httpErr != nil {
 			log.Error("Failed to fetch schema from URL", slog.Any("error", httpErr))

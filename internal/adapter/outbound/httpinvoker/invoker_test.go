@@ -98,7 +98,7 @@ func TestInvoker_Invoke(t *testing.T) {
 				BodyParam:   "data",
 			},
 			inParams:   map[string]interface{}{"data": map[string]string{"data": "payload"}},
-			wantResult: "",  // Empty response body returns as empty string
+			wantResult: "", // Empty response body returns as empty string
 			wantErr:    false,
 		},
 		{
@@ -178,8 +178,8 @@ func TestInvoker_Invoke(t *testing.T) {
 				HTTPPath:   "/notfound",
 				HTTPMethod: http.MethodGet,
 			},
-			inParams:      map[string]interface{}{},
-			wantErr:       true,
+			inParams: map[string]interface{}{},
+			wantErr:  true,
 			expectErrCheck: func(err error) {
 				// Use top-level assert instance directly
 				assert.Contains(err.Error(), "HTTP 404:")
@@ -199,8 +199,8 @@ func TestInvoker_Invoke(t *testing.T) {
 				HTTPMethod:  http.MethodPost,
 				ContentType: "application/json",
 			},
-			inParams:      map[string]interface{}{},
-			wantErr:       true,
+			inParams: map[string]interface{}{},
+			wantErr:  true,
 		},
 		{
 			name: "Success - Non-JSON response body returned as string",

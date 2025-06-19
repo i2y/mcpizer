@@ -8,15 +8,10 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/i2y/mcpizer/internal/domain"
-
-	// Import mcp-go types
 	"github.com/mark3labs/mcp-go/mcp"
-	// Remove direct dependency on mcpServer implementation
-	// mcpServer "github.com/mark3labs/mcp-go/server"
-)
 
-// Interface definitions (like ToolInvoker) should be in interfaces.go
+	"github.com/i2y/mcpizer/internal/domain"
+)
 
 // SyncSchemaUseCase orchestrates fetching, generating, and registering tools with an MCP server.
 type SyncSchemaUseCase struct {
@@ -93,11 +88,24 @@ func (uc *SyncSchemaUseCase) processSingleSourceAndRegister(ctx context.Context,
 	}
 	log = log.With(slog.String("detected_type", string(schemaType)))
 
-	fetcher, ok := uc.fetchers[schemaType]
+	// Special handling for GitHub URLs - they need the GitHub fetcher even though they're OpenAPI
+	var fetcher SchemaFetcher
+	var ok bool
+	if strings.HasPrefix(source.URL, "github://") {
+		// Check if we have a GitHub fetcher registered
+		fetcher, ok = uc.fetchers[domain.SchemaType("github")]
+		if !ok {
+			// Fall back to OpenAPI fetcher if no dedicated GitHub fetcher
+			fetcher, ok = uc.fetchers[schemaType]
+		}
+	} else {
+		fetcher, ok = uc.fetchers[schemaType]
+	}
+
 	if !ok {
 		return fmt.Errorf("no schema fetcher available for type %s", schemaType)
 	}
-	
+
 	// Use FetchWithConfig if headers are provided
 	var fetchedSchema domain.APISchema
 	var err error
@@ -357,7 +365,7 @@ func (uc *SyncSchemaUseCase) createToolHandler(details InvocationDetails, toolNa
 		}
 
 		log.Info("Tool handler invocation successful")
-		
+
 		// Convert resultData to appropriate text format
 		var resultText string
 		switch v := resultData.(type) {
@@ -375,7 +383,7 @@ func (uc *SyncSchemaUseCase) createToolHandler(details InvocationDetails, toolNa
 				resultText = string(jsonBytes)
 			}
 		}
-		
+
 		mcpResult := mcp.NewToolResultText(resultText) // Use imported mcp type
 		log.Debug("Tool result formatted", slog.String("resultText", resultText))
 
@@ -387,6 +395,10 @@ func (uc *SyncSchemaUseCase) createToolHandler(details InvocationDetails, toolNa
 func (uc *SyncSchemaUseCase) determineSchemaType(source string) domain.SchemaType {
 	if strings.HasPrefix(source, "grpc://") {
 		return domain.SchemaTypeGRPC
+	}
+	if strings.HasPrefix(source, "github://") {
+		// GitHub URLs are always treated as OpenAPI for now
+		return domain.SchemaTypeOpenAPI
 	}
 	if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") || !strings.Contains(source, "://") {
 		return domain.SchemaTypeOpenAPI
@@ -401,7 +413,7 @@ func (uc *SyncSchemaUseCase) Execute(ctx context.Context, source string) error {
 
 	// Create a SchemaSourceConfig from the string source
 	sourceConfig := SchemaSourceConfig{URL: source}
-	
+
 	// Wrap the error from processSingleSourceAndRegister to match expected test output
 	if err := uc.processSingleSourceAndRegister(ctx, sourceConfig); err != nil {
 		log.Error("Failed to process schema source via Execute.", slog.Any("error", err))

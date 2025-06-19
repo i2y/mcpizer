@@ -135,10 +135,10 @@ func (f *SchemaFetcher) FetchLegacy(ctx context.Context, src string) (domain.API
 func (f *SchemaFetcher) FetchWithConfig(ctx context.Context, config usecase.SchemaSourceConfig) (domain.APISchema, error) {
 	log := f.logger.With(slog.String("source", config.URL))
 	if len(config.Headers) > 0 {
-		log.Warn("gRPC schema fetching does not support custom headers for reflection calls", 
+		log.Warn("gRPC schema fetching does not support custom headers for reflection calls",
 			slog.Int("header_count", len(config.Headers)))
 	}
-	
+
 	// gRPC reflection doesn't typically require authentication headers
 	// If authentication is needed, it should be configured via DialOptions
 	// For now, we just delegate to the regular Fetch method

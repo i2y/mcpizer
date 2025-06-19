@@ -12,18 +12,18 @@ import (
 
 // Common OpenAPI schema paths used by various frameworks
 var commonOpenAPIPaths = []string{
-	"/openapi.json",         // FastAPI default
-	"/docs/openapi.json",    // Alternative FastAPI path
-	"/swagger.json",         // Swagger/OpenAPI 2.0
-	"/v3/api-docs",          // SpringDoc OpenAPI 3.0
-	"/api-docs",             // SpringFox
-	"/api/openapi.json",     // Custom API prefix
-	"/api/v1/openapi.json",  // Versioned API
-	"/api/swagger.json",     // Alternative swagger path
+	"/openapi.json",            // FastAPI default
+	"/docs/openapi.json",       // Alternative FastAPI path
+	"/swagger.json",            // Swagger/OpenAPI 2.0
+	"/v3/api-docs",             // SpringDoc OpenAPI 3.0
+	"/api-docs",                // SpringFox
+	"/api/openapi.json",        // Custom API prefix
+	"/api/v1/openapi.json",     // Versioned API
+	"/api/swagger.json",        // Alternative swagger path
 	"/swagger/v1/swagger.json", // .NET default
-	"/_spec",                // Some Node.js frameworks
-	"/spec",                 // Alternative spec path
-	"/api-spec.json",        // Custom spec name
+	"/_spec",                   // Some Node.js frameworks
+	"/spec",                    // Alternative spec path
+	"/api-spec.json",           // Custom spec name
 }
 
 // AutoDiscoverer attempts to find OpenAPI schemas from base URLs
@@ -65,7 +65,7 @@ func (d *AutoDiscoverer) DiscoverSchema(ctx context.Context, baseURL string) (st
 			log.Info("Found OpenAPI schema", slog.String("url", schemaURL))
 			return schemaURL, nil
 		} else if err != nil {
-			log.Debug("Failed to check endpoint", 
+			log.Debug("Failed to check endpoint",
 				slog.String("url", schemaURL),
 				slog.Any("error", err))
 		}
@@ -110,8 +110,8 @@ func (d *AutoDiscoverer) checkOpenAPIEndpoint(ctx context.Context, schemaURL str
 
 	// Check content type
 	contentType := resp.Header.Get("Content-Type")
-	if !strings.Contains(contentType, "application/json") && 
-	   !strings.Contains(contentType, "application/vnd.oai.openapi+json") {
+	if !strings.Contains(contentType, "application/json") &&
+		!strings.Contains(contentType, "application/vnd.oai.openapi+json") {
 		return false, nil
 	}
 
@@ -136,10 +136,10 @@ func (d *AutoDiscoverer) ResolveSchemaSource(ctx context.Context, source string)
 
 	// Check if it's already a schema URL (ends with .json or contains openapi/swagger)
 	lowerSource := strings.ToLower(source)
-	if strings.HasSuffix(lowerSource, ".json") || 
-	   strings.Contains(lowerSource, "openapi") || 
-	   strings.Contains(lowerSource, "swagger") ||
-	   strings.Contains(lowerSource, "api-docs") {
+	if strings.HasSuffix(lowerSource, ".json") ||
+		strings.Contains(lowerSource, "openapi") ||
+		strings.Contains(lowerSource, "swagger") ||
+		strings.Contains(lowerSource, "api-docs") {
 		log.Debug("Source appears to be a direct schema URL")
 		return source, nil
 	}
@@ -163,10 +163,10 @@ func (d *AutoDiscoverer) ResolveSchemaSourceWithHeaders(ctx context.Context, sou
 
 	// Check if it's already a schema URL (ends with .json or contains openapi/swagger)
 	lowerSource := strings.ToLower(source)
-	if strings.HasSuffix(lowerSource, ".json") || 
-	   strings.Contains(lowerSource, "openapi") || 
-	   strings.Contains(lowerSource, "swagger") ||
-	   strings.Contains(lowerSource, "api-docs") {
+	if strings.HasSuffix(lowerSource, ".json") ||
+		strings.Contains(lowerSource, "openapi") ||
+		strings.Contains(lowerSource, "swagger") ||
+		strings.Contains(lowerSource, "api-docs") {
 		log.Debug("Source appears to be a direct schema URL")
 		return source, nil
 	}
@@ -236,7 +236,7 @@ func (d *AutoDiscoverer) isValidOpenAPIWithHeaders(ctx context.Context, testURL 
 	// Set standard headers
 	req.Header.Set("Accept", "application/json, application/vnd.oai.openapi+json")
 	req.Header.Set("User-Agent", "MCPizer/1.0")
-	
+
 	// Add custom headers
 	for key, value := range headers {
 		req.Header.Set(key, value)
@@ -255,8 +255,8 @@ func (d *AutoDiscoverer) isValidOpenAPIWithHeaders(ctx context.Context, testURL 
 
 	// Check content type
 	contentType := resp.Header.Get("Content-Type")
-	if !strings.Contains(contentType, "application/json") && 
-	   !strings.Contains(contentType, "application/vnd.oai.openapi+json") {
+	if !strings.Contains(contentType, "application/json") &&
+		!strings.Contains(contentType, "application/vnd.oai.openapi+json") {
 		return false, nil
 	}
 

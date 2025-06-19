@@ -419,9 +419,9 @@ func (g *ToolGenerator) convertSchemaRef(log *slog.Logger, ref *openapi3.SchemaR
 // generateInvocationDetails creates the details needed to invoke the API endpoint.
 func (g *ToolGenerator) generateInvocationDetails(log *slog.Logger, host, basePath, path, method string, op *openapi3.Operation) (*usecase.InvocationDetails, error) {
 	details := usecase.InvocationDetails{
-		Type:        "http", // HTTP REST API
-		Host:        host,
-		BasePath:    basePath, // Store the extracted base path
+		Type:         "http", // HTTP REST API
+		Host:         host,
+		BasePath:     basePath, // Store the extracted base path
 		HTTPMethod:   strings.ToUpper(method),
 		HTTPPath:     path,
 		PathParams:   []string{},

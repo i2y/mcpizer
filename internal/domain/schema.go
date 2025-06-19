@@ -6,6 +6,7 @@ type SchemaType string
 const (
 	SchemaTypeOpenAPI SchemaType = "openapi"
 	SchemaTypeGRPC    SchemaType = "grpc"
+	SchemaTypeGitHub  SchemaType = "github" // GitHub-hosted OpenAPI schemas
 	// Add other types like GraphQL here if needed later
 )
 
