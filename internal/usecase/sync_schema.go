@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -356,9 +357,27 @@ func (uc *SyncSchemaUseCase) createToolHandler(details InvocationDetails, toolNa
 		}
 
 		log.Info("Tool handler invocation successful")
-		resultText := fmt.Sprintf("%+v", resultData)
+		
+		// Convert resultData to appropriate text format
+		var resultText string
+		switch v := resultData.(type) {
+		case string:
+			// Already a string (e.g., non-JSON response)
+			resultText = v
+		default:
+			// For structured data (parsed JSON), marshal it back to JSON
+			jsonBytes, err := json.Marshal(resultData)
+			if err != nil {
+				log.Error("Failed to marshal result data to JSON", slog.Any("error", err))
+				// Fallback to string representation
+				resultText = fmt.Sprintf("%+v", resultData)
+			} else {
+				resultText = string(jsonBytes)
+			}
+		}
+		
 		mcpResult := mcp.NewToolResultText(resultText) // Use imported mcp type
-		log.Warn("Tool result formatting is a placeholder (text).", slog.Any("resultData", resultData))
+		log.Debug("Tool result formatted", slog.String("resultText", resultText))
 
 		return mcpResult, nil
 	}

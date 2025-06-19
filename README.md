@@ -97,19 +97,21 @@ Create `~/.mcpizer.yaml` with your API endpoints:
 
 ```yaml
 schema_sources:
-  # FastAPI/Django - auto-discovers OpenAPI at /openapi.json, /docs, etc.
-  - http://my-fastapi-app:8000
+  # Production APIs with HTTPS
+  - https://api.mycompany.com              # Auto-discovers OpenAPI
+  - https://api.example.com/openapi.json   # Direct schema URL
   
-  # Spring Boot - auto-discovers at /v3/api-docs, /swagger.json
-  - http://spring-service.local:8080
+  # GitHub-hosted schemas (great for APIs without built-in schemas)
+  - https://raw.githubusercontent.com/myorg/api-specs/main/user-api.yaml
   
-  # Direct schema URLs (if auto-discovery doesn't work)
-  - https://api.example.com/openapi.json
+  # Internal services (FastAPI, Spring Boot, etc.)
+  - http://my-fastapi-app:8000     # Auto-discovers at /openapi.json, /docs
+  - http://spring-service:8080     # Auto-discovers at /v3/api-docs
   
   # gRPC services (must have reflection enabled)
   - grpc://my-grpc-service:50051
   
-  # For local development (when running on same machine)
+  # Local development
   - http://localhost:3000
   - grpc://localhost:50052
   
@@ -197,11 +199,13 @@ MCPizer looks for config in this order:
 **REST APIs (OpenAPI/Swagger)**
 ```yaml
 schema_sources:
-  # Just the base URL - we'll find the schema
-  - http://your-api-host:8000      # Tries /openapi.json, /swagger.json, etc.
+  # Auto-discovery from base URL
+  - https://api.production.com      # Tries /openapi.json, /swagger.json, etc.
+  - http://internal-api:8000        # For internal services
   
-  # Or specify exact schema location
+  # Direct schema URLs
   - https://api.example.com/v3/openapi.yaml
+  - https://raw.githubusercontent.com/company/api-specs/main/openapi.json
 ```
 
 ### Separate Schema Files and API Servers
@@ -266,7 +270,10 @@ paths:
                     name: {type: string}
 ```
 
-2. Host it anywhere (GitHub, S3, local file)
+2. Host it anywhere:
+   - GitHub: `https://raw.githubusercontent.com/yourorg/specs/main/api.yaml`
+   - S3/CDN: `https://cdn.company.com/api-specs/v1/openapi.json`
+   - Local file: `./schemas/third-party-api.yaml`
 3. Point MCPizer to your schema file
 
 ### Auto-Discovery Process

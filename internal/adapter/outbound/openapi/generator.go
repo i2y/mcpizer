@@ -173,7 +173,7 @@ func (g *ToolGenerator) determineHostAndBasePathFromServers(schemaSourceURL stri
 		}
 
 		// Check if the (potentially resolved) URL is suitable
-		if (resolvedURL.Scheme == "http" || resolvedURL.Scheme == "https://") && resolvedURL.Host != "" {
+		if (resolvedURL.Scheme == "http" || resolvedURL.Scheme == "https") && resolvedURL.Host != "" {
 			// Found a suitable HTTP/HTTPS URL.
 			host := fmt.Sprintf("%s://%s", resolvedURL.Scheme, resolvedURL.Host)
 			basePath := resolvedURL.Path

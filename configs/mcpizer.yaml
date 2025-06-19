@@ -6,7 +6,7 @@
 # 2. An object with url and headers for authenticated endpoints
 schema_sources:
   # Simple format (no authentication required)
-  - http://petstore:8080/api/v3/openapi.json
+  - https://petstore3.swagger.io/api/v3/openapi.json  # Swagger Petstore (public test API)
   - grpc://grpcb.in:9000  # Public gRPC test service with reflection enabled
   
   # Object format with headers (for authenticated APIs)
