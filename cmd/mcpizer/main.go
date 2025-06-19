@@ -59,13 +59,20 @@ type Config struct {
 func main() {
 	// === Command Line Flags ===
 	var transport string
+	var configFile string
 	flag.StringVar(&transport, "transport", "sse", "Transport mode: sse or stdio")
+	flag.StringVar(&configFile, "config", "", "Path to config file (overrides MCPIZER_CONFIG_FILE)")
 	flag.Parse()
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	// === Configuration ===
+	// Override environment variable with command line flag if provided
+	if configFile != "" {
+		os.Setenv("MCPIZER_CONFIG_FILE", configFile)
+	}
+
 	cfg, err := configs.Load()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)

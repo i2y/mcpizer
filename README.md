@@ -87,13 +87,33 @@ go install github.com/i2y/mcpizer/cmd/mcpizer@latest
 mcpizer --help
 ```
 
+### Usage Examples
+
+```bash
+# Use default config file (configs/mcpizer.yaml)
+mcpizer
+
+# Specify config file via command line (highest priority)
+mcpizer -config=/path/to/config.yaml
+
+# Use GitHub-hosted config
+mcpizer -config=github://myorg/configs/mcpizer-prod.yaml
+
+# Or via environment variable
+export MCPIZER_CONFIG_FILE=/path/to/config.yaml
+mcpizer
+
+# STDIO mode with custom config
+mcpizer -transport=stdio -config=./my-config.yaml
+```
+
 > **Note**: Make sure `$GOPATH/bin` is in your PATH. If not installed, [install Go first](https://golang.org/doc/install).
 
 ## Quick Start
 
 ### Step 1: Configure Your APIs
 
-Create `~/.mcpizer.yaml` with your API endpoints:
+Create a config file with your API endpoints:
 
 ```yaml
 schema_sources:
@@ -142,7 +162,7 @@ Add to your configuration file:
   "mcpServers": {
     "mcpizer": {
       "command": "mcpizer",
-      "args": ["-transport=stdio"]
+      "args": ["-transport=stdio", "-config=/path/to/your/config.yaml"]
     }
   }
 }
@@ -192,9 +212,9 @@ mcpizer -transport=stdio
 ### Configuration
 
 MCPizer looks for config in this order:
-1. `$MCPIZER_CONFIG_FILE` environment variable
-2. `./configs/mcpizer.yaml` 
-3. `~/.mcpizer.yaml`
+1. `-config` command line flag (highest priority)
+2. `$MCPIZER_CONFIG_FILE` environment variable
+3. `configs/mcpizer.yaml` (default)
 
 #### Supported API Types
 
