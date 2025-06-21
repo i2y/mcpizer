@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/i2y/mcpizer/internal/adapter/outbound/connect"
 	"github.com/i2y/mcpizer/internal/adapter/outbound/grpcinvoker"
 	"github.com/i2y/mcpizer/internal/adapter/outbound/httpinvoker"
 	"github.com/i2y/mcpizer/internal/usecase"
@@ -13,17 +14,19 @@ import (
 
 // Router implements usecase.ToolInvoker and routes invocations based on the Type field
 type Router struct {
-	httpInvoker *httpinvoker.Invoker
-	grpcInvoker *grpcinvoker.Invoker
-	logger      *slog.Logger
+	httpInvoker    *httpinvoker.Invoker
+	grpcInvoker    *grpcinvoker.Invoker
+	connectInvoker *connect.Invoker
+	logger         *slog.Logger
 }
 
 // NewRouter creates a new invoker router
-func NewRouter(httpInv *httpinvoker.Invoker, grpcInv *grpcinvoker.Invoker, logger *slog.Logger) *Router {
+func NewRouter(httpInv *httpinvoker.Invoker, grpcInv *grpcinvoker.Invoker, connectInv *connect.Invoker, logger *slog.Logger) *Router {
 	return &Router{
-		httpInvoker: httpInv,
-		grpcInvoker: grpcInv,
-		logger:      logger.With("component", "invoker_router"),
+		httpInvoker:    httpInv,
+		grpcInvoker:    grpcInv,
+		connectInvoker: connectInv,
+		logger:         logger.With("component", "invoker_router"),
 	}
 }
 
@@ -52,6 +55,16 @@ func (r *Router) Invoke(ctx context.Context, details usecase.InvocationDetails, 
 			}
 		}
 		return r.grpcInvoker.InvokeGRPC(ctx, target, details.GRPCService, details.GRPCMethod, params)
+
+	case "connect":
+		log.Info("Routing to Connect-RPC invoker")
+		// Use Server field for the Connect-RPC server URL
+		server := details.Host
+		if details.Server != "" {
+			server = details.Server
+		}
+		// Method contains the full path like /package.Service/Method
+		return r.connectInvoker.InvokeHTTP(ctx, server, details.Method, params)
 
 	case "http", "":
 		log.Info("Routing to HTTP invoker")

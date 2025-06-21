@@ -1,0 +1,23 @@
+# Example configuration for Connect-RPC services
+schema_sources:
+  # Connect-RPC service with gRPC reflection
+  # If the Connect-RPC service supports gRPC reflection, you can use it directly
+  - grpc://connect.example.com:50051
+  
+  # Connect-RPC service with HTTP/JSON mode using .proto file
+  - url: github://connectrpc/examples/eliza/eliza.proto
+    server: https://demo.connectrpc.com
+    type: connect
+    mode: http  # Use HTTP/JSON mode for Connect-RPC
+  
+  # Connect-RPC service with gRPC mode using .proto file
+  - url: https://raw.githubusercontent.com/connectrpc/examples/main/eliza/eliza.proto
+    server: grpc://demo.connectrpc.com:50051
+    type: connect
+    mode: grpc  # Use gRPC mode (requires gRPC support)
+  
+  # Local .proto file example
+  - url: file:///path/to/service.proto
+    server: https://api.example.com
+    type: connect
+    mode: http

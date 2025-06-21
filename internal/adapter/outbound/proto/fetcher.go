@@ -6,6 +6,8 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"os"
 	"strings"
 
 	"github.com/i2y/mcpizer/internal/domain"
@@ -36,32 +38,55 @@ func (f *SchemaFetcher) Fetch(ctx context.Context, src string) (domain.APISchema
 		return domain.APISchema{}, fmt.Errorf("source must be a .proto file, got: %s", src)
 	}
 
-	// Create HTTP request with context
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, src, nil)
+	var data []byte
+	var err error
+
+	// Parse URL to check scheme
+	parsedURL, err := url.Parse(src)
 	if err != nil {
-		log.Error("Failed to create HTTP request", slog.Any("error", err))
-		return domain.APISchema{}, fmt.Errorf("failed to create request: %w", err)
+		log.Error("Failed to parse URL", slog.Any("error", err))
+		return domain.APISchema{}, fmt.Errorf("failed to parse URL: %w", err)
 	}
 
-	// Execute request
-	resp, err := f.httpClient.Do(req)
-	if err != nil {
-		log.Error("Failed to fetch .proto file", slog.Any("error", err))
-		return domain.APISchema{}, fmt.Errorf("failed to fetch .proto file: %w", err)
-	}
-	defer resp.Body.Close()
+	// Handle file:// URLs
+	if parsedURL.Scheme == "file" {
+		filePath := parsedURL.Path
+		log.Debug("Reading local file", slog.String("path", filePath))
 
-	// Check status code
-	if resp.StatusCode != http.StatusOK {
-		log.Error("HTTP request failed", slog.Int("status_code", resp.StatusCode))
-		return domain.APISchema{}, fmt.Errorf("HTTP request failed with status %d", resp.StatusCode)
-	}
+		data, err = os.ReadFile(filePath)
+		if err != nil {
+			log.Error("Failed to read local file", slog.Any("error", err))
+			return domain.APISchema{}, fmt.Errorf("failed to read local file: %w", err)
+		}
+	} else {
+		// Handle HTTP/HTTPS URLs
+		// Create HTTP request with context
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, src, nil)
+		if err != nil {
+			log.Error("Failed to create HTTP request", slog.Any("error", err))
+			return domain.APISchema{}, fmt.Errorf("failed to create request: %w", err)
+		}
 
-	// Read response body
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Error("Failed to read response body", slog.Any("error", err))
-		return domain.APISchema{}, fmt.Errorf("failed to read response body: %w", err)
+		// Execute request
+		resp, err := f.httpClient.Do(req)
+		if err != nil {
+			log.Error("Failed to fetch .proto file", slog.Any("error", err))
+			return domain.APISchema{}, fmt.Errorf("failed to fetch .proto file: %w", err)
+		}
+		defer resp.Body.Close()
+
+		// Check status code
+		if resp.StatusCode != http.StatusOK {
+			log.Error("HTTP request failed", slog.Int("status_code", resp.StatusCode))
+			return domain.APISchema{}, fmt.Errorf("HTTP request failed with status %d", resp.StatusCode)
+		}
+
+		// Read response body
+		data, err = io.ReadAll(resp.Body)
+		if err != nil {
+			log.Error("Failed to read response body", slog.Any("error", err))
+			return domain.APISchema{}, fmt.Errorf("failed to read response body: %w", err)
+		}
 	}
 
 	log.Info("Successfully fetched .proto file", slog.Int("size", len(data)))
@@ -86,42 +111,65 @@ func (f *SchemaFetcher) FetchWithConfig(ctx context.Context, config usecase.Sche
 		return domain.APISchema{}, fmt.Errorf("source must be a .proto file, got: %s", config.URL)
 	}
 
-	// Create HTTP request with context
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, config.URL, nil)
+	var data []byte
+	var err error
+
+	// Parse URL to check scheme
+	parsedURL, err := url.Parse(config.URL)
 	if err != nil {
-		log.Error("Failed to create HTTP request", slog.Any("error", err))
-		return domain.APISchema{}, fmt.Errorf("failed to create request: %w", err)
+		log.Error("Failed to parse URL", slog.Any("error", err))
+		return domain.APISchema{}, fmt.Errorf("failed to parse URL: %w", err)
 	}
 
-	// Add custom headers
-	for key, value := range config.Headers {
-		req.Header.Set(key, value)
-	}
+	// Handle file:// URLs
+	if parsedURL.Scheme == "file" {
+		filePath := parsedURL.Path
+		log.Debug("Reading local file", slog.String("path", filePath))
 
-	// Execute request
-	resp, err := f.httpClient.Do(req)
-	if err != nil {
-		log.Error("Failed to fetch .proto file", slog.Any("error", err))
-		return domain.APISchema{}, fmt.Errorf("failed to fetch .proto file: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Check status code
-	if resp.StatusCode != http.StatusOK {
-		log.Error("HTTP request failed", slog.Int("status_code", resp.StatusCode))
-		// Read error body if available
-		errorBody, _ := io.ReadAll(resp.Body)
-		if len(errorBody) > 0 {
-			log.Error("Error response body", slog.String("body", string(errorBody)))
+		data, err = os.ReadFile(filePath)
+		if err != nil {
+			log.Error("Failed to read local file", slog.Any("error", err))
+			return domain.APISchema{}, fmt.Errorf("failed to read local file: %w", err)
 		}
-		return domain.APISchema{}, fmt.Errorf("HTTP request failed with status %d", resp.StatusCode)
-	}
+	} else {
+		// Handle HTTP/HTTPS URLs
+		// Create HTTP request with context
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, config.URL, nil)
+		if err != nil {
+			log.Error("Failed to create HTTP request", slog.Any("error", err))
+			return domain.APISchema{}, fmt.Errorf("failed to create request: %w", err)
+		}
 
-	// Read response body
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Error("Failed to read response body", slog.Any("error", err))
-		return domain.APISchema{}, fmt.Errorf("failed to read response body: %w", err)
+		// Add custom headers
+		for key, value := range config.Headers {
+			req.Header.Set(key, value)
+		}
+
+		// Execute request
+		resp, err := f.httpClient.Do(req)
+		if err != nil {
+			log.Error("Failed to fetch .proto file", slog.Any("error", err))
+			return domain.APISchema{}, fmt.Errorf("failed to fetch .proto file: %w", err)
+		}
+		defer resp.Body.Close()
+
+		// Check status code
+		if resp.StatusCode != http.StatusOK {
+			log.Error("HTTP request failed", slog.Int("status_code", resp.StatusCode))
+			// Read error body if available
+			errorBody, _ := io.ReadAll(resp.Body)
+			if len(errorBody) > 0 {
+				log.Error("Error response body", slog.String("body", string(errorBody)))
+			}
+			return domain.APISchema{}, fmt.Errorf("HTTP request failed with status %d", resp.StatusCode)
+		}
+
+		// Read response body
+		data, err = io.ReadAll(resp.Body)
+		if err != nil {
+			log.Error("Failed to read response body", slog.Any("error", err))
+			return domain.APISchema{}, fmt.Errorf("failed to read response body: %w", err)
+		}
 	}
 
 	log.Info("Successfully fetched .proto file with config", slog.Int("size", len(data)))
@@ -133,9 +181,19 @@ func (f *SchemaFetcher) FetchWithConfig(ctx context.Context, config usecase.Sche
 	if config.Server != "" {
 		parsedData["server"] = config.Server
 	}
+	if config.Mode != "" {
+		parsedData["mode"] = config.Mode
+	}
+
+	// Determine schema type based on configuration
+	schemaType := domain.SchemaTypeProto
+	if config.Type == "connect" {
+		schemaType = domain.SchemaTypeConnectProto
+	}
+
 	return domain.APISchema{
 		Source:     config.URL,
-		Type:       domain.SchemaTypeProto,
+		Type:       schemaType,
 		RawData:    data,
 		ParsedData: parsedData,
 	}, nil

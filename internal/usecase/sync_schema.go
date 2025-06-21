@@ -82,9 +82,18 @@ func (uc *SyncSchemaUseCase) SyncAllConfiguredSources(ctx context.Context) error
 func (uc *SyncSchemaUseCase) processSingleSourceAndRegister(ctx context.Context, source SchemaSourceConfig) error {
 	log := uc.logger.With(slog.String("source", source.URL))
 
-	schemaType := uc.determineSchemaType(source.URL)
-	if schemaType == "" {
-		return fmt.Errorf("could not determine schema type from source format")
+	// Check if schema type is explicitly configured
+	var schemaType domain.SchemaType
+	if source.Type != "" {
+		// Use explicitly configured type
+		schemaType = domain.SchemaType(source.Type)
+		log.Debug("Using explicitly configured schema type", slog.String("type", source.Type))
+	} else {
+		// Auto-detect schema type
+		schemaType = uc.determineSchemaType(source.URL)
+		if schemaType == "" {
+			return fmt.Errorf("could not determine schema type from source format")
+		}
 	}
 	log = log.With(slog.String("detected_type", string(schemaType)))
 
@@ -98,6 +107,9 @@ func (uc *SyncSchemaUseCase) processSingleSourceAndRegister(ctx context.Context,
 			// Fall back to the appropriate fetcher based on file type
 			fetcher, ok = uc.fetchers[schemaType]
 		}
+	} else if strings.HasSuffix(source.URL, ".proto") {
+		// .proto files always use the proto fetcher, regardless of configured type
+		fetcher, ok = uc.fetchers[domain.SchemaTypeProto]
 	} else {
 		fetcher, ok = uc.fetchers[schemaType]
 	}
@@ -106,10 +118,10 @@ func (uc *SyncSchemaUseCase) processSingleSourceAndRegister(ctx context.Context,
 		return fmt.Errorf("no schema fetcher available for type %s", schemaType)
 	}
 
-	// Use FetchWithConfig if headers are provided or if it's a .proto file with server
+	// Use FetchWithConfig if headers are provided or if it's a .proto file with server or if type/mode is configured
 	var fetchedSchema domain.APISchema
 	var err error
-	if len(source.Headers) > 0 || (schemaType == domain.SchemaTypeProto && source.Server != "") {
+	if len(source.Headers) > 0 || (schemaType == domain.SchemaTypeProto && source.Server != "") || source.Type != "" || source.Mode != "" {
 		fetchedSchema, err = fetcher.FetchWithConfig(ctx, source)
 		if err != nil {
 			return fmt.Errorf("failed to fetch schema with config: %w", err)
@@ -124,7 +136,14 @@ func (uc *SyncSchemaUseCase) processSingleSourceAndRegister(ctx context.Context,
 		fetchedSchema.Type = schemaType
 		log.Warn("Fetcher did not set schema type, using detected type.")
 	} else if fetchedSchema.Type != schemaType {
-		return fmt.Errorf("detected schema type (%s) mismatch with fetched schema type (%s)", schemaType, fetchedSchema.Type)
+		// Special handling for Connect-RPC with proto files
+		if (schemaType == domain.SchemaTypeConnect && fetchedSchema.Type == domain.SchemaTypeConnectProto) ||
+			(schemaType == domain.SchemaTypeConnectProto && fetchedSchema.Type == domain.SchemaTypeConnect) {
+			// These are compatible - both are Connect-RPC, just different configurations
+			log.Debug("Connect-RPC type variation detected, continuing with fetched type")
+		} else {
+			return fmt.Errorf("detected schema type (%s) mismatch with fetched schema type (%s)", schemaType, fetchedSchema.Type)
+		}
 	}
 	log.Info("Schema fetched successfully.")
 
@@ -403,6 +422,9 @@ func (uc *SyncSchemaUseCase) determineSchemaType(source string) domain.SchemaTyp
 	}
 	if strings.HasPrefix(source, "grpc://") {
 		return domain.SchemaTypeGRPC
+	}
+	if strings.HasPrefix(source, "connect://") {
+		return domain.SchemaTypeConnect
 	}
 	if strings.HasPrefix(source, "github://") {
 		// GitHub URLs default to OpenAPI unless they end with .proto

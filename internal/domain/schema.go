@@ -4,10 +4,12 @@ package domain
 type SchemaType string
 
 const (
-	SchemaTypeOpenAPI SchemaType = "openapi"
-	SchemaTypeGRPC    SchemaType = "grpc"
-	SchemaTypeGitHub  SchemaType = "github" // GitHub-hosted OpenAPI schemas
-	SchemaTypeProto   SchemaType = "proto"  // .proto files
+	SchemaTypeOpenAPI      SchemaType = "openapi"
+	SchemaTypeGRPC         SchemaType = "grpc"
+	SchemaTypeGitHub       SchemaType = "github"       // GitHub-hosted OpenAPI schemas
+	SchemaTypeProto        SchemaType = "proto"        // .proto files
+	SchemaTypeConnect      SchemaType = "connect"      // Connect-RPC (HTTP mode)
+	SchemaTypeConnectProto SchemaType = "connectproto" // Connect-RPC with .proto file
 	// Add other types like GraphQL here if needed later
 )
 

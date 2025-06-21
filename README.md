@@ -147,6 +147,16 @@ schema_sources:
   - url: github://myorg/protos/service.proto@main
     server: grpc://production.example.com:50051
   
+  # Connect-RPC services (NEW!)
+  # If the service supports gRPC reflection:
+  - grpc://connect.example.com:50051
+  
+  # Connect-RPC with HTTP/JSON mode:
+  - url: github://connectrpc/examples/eliza/eliza.proto
+    server: https://demo.connectrpc.com
+    type: connect
+    mode: http  # Use HTTP/JSON for easier debugging
+  
   # Local development
   - http://localhost:3000
   - grpc://localhost:50052
@@ -245,6 +255,31 @@ schema_sources:
   - https://api.example.com/v3/openapi.yaml
   - https://raw.githubusercontent.com/company/api-specs/main/openapi.json
 ```
+
+**Connect-RPC Services (NEW!)**
+```yaml
+schema_sources:
+  # Connect-RPC with gRPC reflection (if supported)
+  - grpc://connect.example.com:50051
+  
+  # Connect-RPC with HTTP/JSON mode
+  - url: github://connectrpc/examples/eliza/eliza.proto
+    server: https://demo.connectrpc.com
+    type: connect
+    mode: http    # HTTP/JSON mode (default)
+  
+  # Connect-RPC with gRPC mode
+  - url: https://raw.githubusercontent.com/myorg/protos/service.proto
+    server: grpc://connect.example.com:50051
+    type: connect
+    mode: grpc    # Use gRPC transport
+```
+
+Connect-RPC features:
+- **HTTP/JSON mode**: Human-readable, works with curl and browser tools
+- **gRPC mode**: Binary protocol, more efficient
+- **Dual support**: Same service can be accessed via both modes
+- **No proxy needed**: Direct HTTP/JSON communication
 
 ### Separate Schema Files and API Servers
 
@@ -684,6 +719,9 @@ Benefits:
 ```bash
 # Run tests
 go test ./...
+
+# Run integration tests (requires internet connection)
+go test -tags=integration ./...
 
 # Build locally
 go build -o mcpizer ./cmd/mcpizer

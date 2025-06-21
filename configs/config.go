@@ -17,6 +17,8 @@ type SchemaSource struct {
 	URL     string            `yaml:"url"`
 	Headers map[string]string `yaml:"headers,omitempty"`
 	Server  string            `yaml:"server,omitempty"` // For .proto files, the gRPC server endpoint
+	Type    string            `yaml:"type,omitempty"`   // Schema type override (e.g., "connect" for Connect-RPC)
+	Mode    string            `yaml:"mode,omitempty"`   // Invocation mode (e.g., "http" or "grpc" for Connect-RPC)
 }
 
 // FileConfig defines the structure loaded from the YAML configuration file.
@@ -133,6 +135,12 @@ func Load() (*Config, error) {
 			}
 			if server, ok := v["server"].(string); ok {
 				ss.Server = server
+			}
+			if typ, ok := v["type"].(string); ok {
+				ss.Type = typ
+			}
+			if mode, ok := v["mode"].(string); ok {
+				ss.Mode = mode
 			}
 			if ss.URL != "" {
 				// Validate that .proto files have a server specified

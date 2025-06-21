@@ -1,0 +1,6 @@
+schema_sources:
+  # Connect-RPC with HTTP/JSON mode
+  - url: file:///path/to/eliza.proto
+    server: https://demo.connectrpc.com
+    type: connect
+    mode: http

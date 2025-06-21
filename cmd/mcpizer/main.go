@@ -23,6 +23,7 @@ import (
 	"github.com/i2y/mcpizer/internal/usecase"
 
 	// Import outbound adapters needed for syncUC
+	connectadapter "github.com/i2y/mcpizer/internal/adapter/outbound/connect"
 	"github.com/i2y/mcpizer/internal/adapter/outbound/github"
 	grpcadapter "github.com/i2y/mcpizer/internal/adapter/outbound/grpc"
 	protoadapter "github.com/i2y/mcpizer/internal/adapter/outbound/proto"
@@ -135,11 +136,13 @@ func main() {
 	grpcFetcher := grpcadapter.NewSchemaFetcher(logger)
 	githubFetcher := github.NewFetcher(logger)
 	protoFetcher := protoadapter.NewSchemaFetcher(httpClient, logger)
+	connectFetcher := connectadapter.NewSchemaFetcher(logger)
 	fetchers := map[domain.SchemaType]usecase.SchemaFetcher{
 		domain.SchemaTypeOpenAPI: openapiFetcher,
 		domain.SchemaTypeGRPC:    grpcFetcher,
 		domain.SchemaTypeGitHub:  githubFetcher,
 		domain.SchemaTypeProto:   protoFetcher,
+		domain.SchemaTypeConnect: connectFetcher,
 	}
 	logger.Debug("Schema fetchers initialized.")
 
@@ -147,18 +150,22 @@ func main() {
 	openapiGenerator := openapi.NewToolGenerator(logger)
 	grpcGenerator := grpcadapter.NewToolGenerator(logger)
 	protoGenerator := protoadapter.NewGenerator(logger)
+	connectGenerator := connectadapter.NewGenerator(logger)
 	generators := map[domain.SchemaType]usecase.ToolGenerator{
-		domain.SchemaTypeOpenAPI: openapiGenerator,
-		domain.SchemaTypeGRPC:    grpcGenerator,
-		domain.SchemaTypeProto:   protoGenerator,
+		domain.SchemaTypeOpenAPI:      openapiGenerator,
+		domain.SchemaTypeGRPC:         grpcGenerator,
+		domain.SchemaTypeProto:        protoGenerator,
+		domain.SchemaTypeConnect:      connectGenerator,
+		domain.SchemaTypeConnectProto: protoGenerator, // Reuse proto generator for Connect+proto
 	}
 	logger.Debug("Tool generators initialized.")
 
 	// --- Tool Invokers (Outbound - Needed by Sync Use Case Tool Handlers) ---
 	httpInv := httpinvoker.New(httpClient, logger)
 	grpcInv := grpcinvoker.NewInvoker(logger)
-	toolInvoker := invoker.NewRouter(httpInv, grpcInv, logger)
-	logger.Debug("Tool invokers initialized (HTTP and gRPC with router).")
+	connectInv := connectadapter.NewInvoker(logger)
+	toolInvoker := invoker.NewRouter(httpInv, grpcInv, connectInv, logger)
+	logger.Debug("Tool invokers initialized (HTTP, gRPC, and Connect-RPC with router).")
 
 	// === Use Case (Admin Sync Only for now) ===
 	// Pass real dependencies needed for registration and handlers
@@ -169,6 +176,8 @@ func main() {
 			URL:     source.URL,
 			Headers: source.Headers,
 			Server:  source.Server,
+			Type:    source.Type,
+			Mode:    source.Mode,
 		}
 	}
 	syncUC := usecase.NewSyncSchemaUseCase(

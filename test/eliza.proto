@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package connectrpc.eliza.v1;
+
+// SayRequest is a request for the Say method.
+message SayRequest {
+  // sentence is the sentence to say to Eliza.
+  string sentence = 1;
+}
+
+// SayResponse is a response from the Say method.
+message SayResponse {
+  // sentence is the reply from Eliza.
+  string sentence = 1;
+}
+
+// ElizaService is a service for the ELIZA psychotherapist program.
+service ElizaService {
+  // Say is a unary RPC. Eliza responds to the prompt with a single sentence.
+  rpc Say(SayRequest) returns (SayResponse) {}
+}

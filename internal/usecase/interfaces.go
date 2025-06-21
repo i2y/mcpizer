@@ -24,6 +24,8 @@ type SchemaSourceConfig struct {
 	URL     string
 	Headers map[string]string
 	Server  string // For .proto files, the gRPC server endpoint
+	Type    string // Schema type override (e.g., "connect" for Connect-RPC)
+	Mode    string // Invocation mode (e.g., "http" or "grpc" for Connect-RPC)
 }
 
 // SchemaFetcher defines the interface for fetching API schemas from various sources.

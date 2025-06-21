@@ -30,10 +30,14 @@ func (g *Generator) Generate(schema domain.APISchema) ([]domain.Tool, []usecase.
 	log := g.logger.With(slog.String("source", schema.Source))
 	log.Info("Generating tools from .proto schema")
 
-	// Extract server URL from ParsedData (temporary solution)
+	// Extract server URL and mode from ParsedData (temporary solution)
 	serverURL := ""
+	mode := "grpc" // default mode
 	if parsedData, ok := schema.ParsedData.(map[string]string); ok {
 		serverURL = parsedData["server"]
+		if m, ok := parsedData["mode"]; ok {
+			mode = m
+		}
 	}
 	if serverURL == "" {
 		return nil, nil, fmt.Errorf("server URL is required for .proto schemas")
@@ -83,8 +87,13 @@ func (g *Generator) Generate(schema domain.APISchema) ([]domain.Tool, []usecase.
 			}
 
 			// Create invocation details
+			invocationType := "grpc"
+			if mode == "http" || mode == "connect" {
+				invocationType = "connect"
+			}
+
 			details := usecase.InvocationDetails{
-				Type:       "grpc",
+				Type:       invocationType,
 				Server:     serverURL,
 				Method:     fullMethodName,
 				InputType:  method.GetInputType().GetFullyQualifiedName(),
