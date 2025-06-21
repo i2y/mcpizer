@@ -2,7 +2,7 @@
 
 MCPizer lets your AI assistant (Claude, VS Code, etc.) call any REST API or gRPC service by automatically converting their schemas into MCP (Model Context Protocol) tools.
 
-**New in v0.2.0:** 
+**New in v0.4.0:** 
 - 🚀 GitHub integration - fetch schemas directly with `github://` URLs
 - 📄 .proto file support - use gRPC without reflection enabled
 - 🔐 Private repo support - automatic authentication via `gh` CLI
