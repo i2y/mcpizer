@@ -43,14 +43,14 @@ func (f *Fetcher) Fetch(ctx context.Context, source string) (domain.APISchema, e
 	}
 	if strings.HasSuffix(sourcePath, ".proto") {
 		log.Info("Fetching .proto file from GitHub")
-		
+
 		// Fetch the file content from GitHub
 		content, err := f.ghClient.FetchFileRaw(ctx, source)
 		if err != nil {
 			log.Error("Failed to fetch .proto file from GitHub", slog.Any("error", err))
 			return domain.APISchema{}, fmt.Errorf("failed to fetch .proto file from GitHub: %w", err)
 		}
-		
+
 		log.Info("Successfully fetched .proto file from GitHub", slog.Int("size", len(content)))
 		return domain.APISchema{
 			Source:     source,
@@ -98,13 +98,13 @@ func (f *Fetcher) FetchWithConfig(ctx context.Context, config usecase.SchemaSour
 	if err != nil {
 		return schema, err
 	}
-	
+
 	// If it's a .proto file and has a server, store it in ParsedData
 	if schema.Type == domain.SchemaTypeProto && config.Server != "" {
 		parsedData := map[string]string{"server": config.Server}
 		schema.ParsedData = parsedData
 	}
-	
+
 	return schema, nil
 }
 

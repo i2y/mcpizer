@@ -197,7 +197,7 @@ func (g *ToolGenerator) determineHostAndBasePathFromServers(schemaSourceURL stri
 // Example strategy: {namespace}-{operationId} or {namespace}-{method}-{path parts}
 func generateToolName(namespace, path, method string, op *openapi3.Operation) string {
 	if op.OperationID != "" {
-		return fmt.Sprintf("%s-%s", namespace, sanitizeName(op.OperationID))
+		return fmt.Sprintf("%s_%s", namespace, sanitizeName(op.OperationID))
 	}
 
 	// Fallback: use method and path
@@ -209,7 +209,7 @@ func generateToolName(namespace, path, method string, op *openapi3.Operation) st
 			nameParts = append(nameParts, sanitizeName(part))
 		}
 	}
-	return strings.Join(nameParts, "-")
+	return strings.Join(nameParts, "_")
 }
 
 // generateInputSchema combines parameters and request body into a single JSON Schema.
@@ -509,15 +509,15 @@ func (g *ToolGenerator) generateInvocationDetails(log *slog.Logger, host, basePa
 // sanitizeName removes characters unsuitable for identifiers and replaces them.
 func sanitizeName(name string) string {
 	name = strings.ToLower(name)
-	// Replace non-alphanumeric characters with hyphen
-	replacer := strings.NewReplacer(" ", "-", "_", "-", "/", "-", ".", "-")
+	// Replace non-alphanumeric characters with underscore (for Claude Desktop compatibility)
+	replacer := strings.NewReplacer(" ", "_", "-", "_", "/", "_", ".", "_")
 	name = replacer.Replace(name)
-	// Remove consecutive hyphens
-	for strings.Contains(name, "--") {
-		name = strings.ReplaceAll(name, "--", "-")
+	// Remove consecutive underscores
+	for strings.Contains(name, "__") {
+		name = strings.ReplaceAll(name, "__", "_")
 	}
-	// Remove leading/trailing hyphens
-	name = strings.Trim(name, "-")
+	// Remove leading/trailing underscores
+	name = strings.Trim(name, "_")
 	return name
 }
 

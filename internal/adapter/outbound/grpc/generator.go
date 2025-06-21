@@ -84,8 +84,8 @@ func (g *ToolGenerator) generateFromServiceInfos(source string, serviceInfos []S
 				methodPart = methodPart[:20]
 			}
 
-			// Create tool name
-			toolName := fmt.Sprintf("%s-%s", strings.ToLower(servicePart), strings.ToLower(methodPart))
+			// Create tool name - use underscore separator for Claude Desktop compatibility
+			toolName := fmt.Sprintf("%s_%s", strings.ToLower(servicePart), strings.ToLower(methodPart))
 
 			// Final safety check - ensure it's under 50 chars (well below 64 limit)
 			if len(toolName) > 50 {
@@ -93,7 +93,7 @@ func (g *ToolGenerator) generateFromServiceInfos(source string, serviceInfos []S
 				h.Write([]byte(serviceInfo.Name + "." + method.Name))
 				hash := fmt.Sprintf("%x", h.Sum32()&0xFFFF)
 				// Keep first 40 chars and add 5-char hash
-				toolName = toolName[:40] + "-" + hash
+				toolName = toolName[:40] + "_" + hash
 			}
 
 			log.Debug("Generated tool name",
@@ -147,7 +147,7 @@ func (g *ToolGenerator) generateFromServiceNamesLegacy(source string, serviceNam
 		// Placeholder: Create one dummy tool per service
 		namespace := sanitizeProtoName(serviceName)
 		methodName := "invoke"
-		toolName := fmt.Sprintf("%s-%s", namespace, methodName)
+		toolName := fmt.Sprintf("%s_%s", namespace, methodName)
 
 		// Limit tool name length
 		if len(toolName) > 64 {
@@ -286,12 +286,13 @@ func sanitizeProtoName(name string) string {
 	}
 
 	name = strings.ToLower(name)
-	replacer := strings.NewReplacer(".", "-", "_", "-") // Replace proto separators
+	// Replace proto separators with underscore (for Claude Desktop compatibility)
+	replacer := strings.NewReplacer(".", "_", "-", "_")
 	name = replacer.Replace(name)
-	for strings.Contains(name, "--") {
-		name = strings.ReplaceAll(name, "--", "-")
+	for strings.Contains(name, "__") {
+		name = strings.ReplaceAll(name, "__", "_")
 	}
-	name = strings.Trim(name, "-")
+	name = strings.Trim(name, "_")
 
 	// Further limit length
 	if len(name) > 30 {
