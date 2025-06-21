@@ -1,0 +1,35 @@
+# Example: Using .proto files with MCPizer
+# This shows various ways to configure gRPC services using .proto files
+
+schema_sources:
+  # Example 1: Public .proto file from GitHub
+  - url: github://grpc/grpc-go/examples/helloworld/helloworld/helloworld.proto@master
+    server: grpc://localhost:50051
+
+  # Example 2: Private company .proto files (requires gh auth login)
+  - url: github://mycompany/protos/user-service.proto@v2.1.0
+    server: grpc://user-service.prod.internal:443
+  
+  # Example 3: Multiple environments, same schema
+  - url: github://mycompany/protos/payment-service.proto@v1.5.0
+    server: grpc://payment.staging.internal:50051  # Staging
+  
+  - url: github://mycompany/protos/payment-service.proto@v1.5.0
+    server: grpc://payment.prod.internal:443       # Production
+
+  # Example 4: .proto from CDN or S3
+  - url: https://schemas.mycompany.com/protos/order-service-v3.proto
+    server: grpc://order-service:50051
+    headers:  # If CDN requires auth
+      X-API-Key: "your-cdn-key"
+
+  # Example 5: Local .proto file (for development)
+  - url: file:///Users/developer/work/protos/experimental.proto
+    server: grpc://localhost:50052
+
+# Benefits of this approach:
+# ✓ No reflection needed in production (more secure)
+# ✓ Version control for schemas
+# ✓ Same .proto can be used for multiple environments
+# ✓ CI/CD can validate schemas before deployment
+# ✓ Works with private repositories via gh CLI

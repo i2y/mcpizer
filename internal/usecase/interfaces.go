@@ -23,6 +23,7 @@ var (
 type SchemaSourceConfig struct {
 	URL     string
 	Headers map[string]string
+	Server  string // For .proto files, the gRPC server endpoint
 }
 
 // SchemaFetcher defines the interface for fetching API schemas from various sources.

@@ -2,14 +2,19 @@
 
 MCPizer lets your AI assistant (Claude, VS Code, etc.) call any REST API or gRPC service by automatically converting their schemas into MCP (Model Context Protocol) tools.
 
+**New in v0.2.0:** 
+- 🚀 GitHub integration - fetch schemas directly with `github://` URLs
+- 📄 .proto file support - use gRPC without reflection enabled
+- 🔐 Private repo support - automatic authentication via `gh` CLI
+
 ## What is MCPizer?
 
 MCPizer is a server that:
-- **Auto-discovers** API schemas from your services (OpenAPI/Swagger, gRPC reflection)
+- **Auto-discovers** API schemas from your services (OpenAPI/Swagger, gRPC reflection, .proto files)
 - **Converts** them into tools your AI can use
 - **Handles** all the API calls with proper types and error handling
 
-Works with any framework that exposes OpenAPI schemas (FastAPI, Spring Boot, Express, etc.) or gRPC services with reflection enabled. No code changes needed in your APIs - just point MCPizer at them!
+Works with any framework that exposes OpenAPI schemas (FastAPI, Spring Boot, Express, etc.) or gRPC services (with reflection or .proto files). No code changes needed in your APIs - just point MCPizer at them!
 
 ## How it Works
 
@@ -57,7 +62,7 @@ graph TB
     subgraph "Your APIs"
         FastAPI[FastAPI<br/>Auto-discovery]
         Spring[Spring Boot<br/>Auto-discovery]
-        gRPC[gRPC Services<br/>Reflection]
+        gRPC[gRPC Services<br/>Reflection/.proto]
         Custom[Custom APIs<br/>Direct schema URL]
     end
     
@@ -133,6 +138,14 @@ schema_sources:
   # gRPC services (must have reflection enabled)
   - grpc://my-grpc-service:50051
   
+  # gRPC with .proto files (NEW! - no reflection needed)
+  - url: https://raw.githubusercontent.com/myorg/protos/main/service.proto
+    server: grpc://production.example.com:50051
+  
+  # Or use github:// for private repos (uses gh CLI)
+  - url: github://myorg/protos/service.proto@main
+    server: grpc://production.example.com:50051
+  
   # Local development
   - http://localhost:3000
   - grpc://localhost:50052
@@ -207,7 +220,9 @@ mcpizer -transport=stdio
 | Test if my API works with MCP | Run `mcpizer -transport=stdio` and check tool list |
 | Run as a background service | Use SSE mode with `mcpizer` (no args) |
 | Debug connection issues | Set `MCPIZER_LOG_LEVEL=debug` |
-| Use a private API | Add full schema URL to config file |
+| Use a private GitHub repo | Use `github://` URLs (requires `gh` CLI) |
+| Use gRPC without reflection | Use .proto files with `server` field |
+| Multiple environments, same API | Use same schema file, different `server` values |
 
 ### Configuration
 
@@ -341,16 +356,36 @@ Supported frameworks:
 **gRPC Services**
 ```yaml
 schema_sources:
+  # Using gRPC reflection (requires reflection enabled on server)
   - grpc://your-grpc-host:50051     # Your service
   - grpc://grpcb.in:9000            # Public test service
+  
+  # Using .proto files (NEW! - no reflection needed)
+  - url: https://raw.githubusercontent.com/grpc/grpc-go/master/examples/helloworld/helloworld/helloworld.proto
+    server: grpc://production.example.com:50051
+  
+  # Private GitHub .proto files (uses gh CLI authentication)
+  - url: github://myorg/protos/user-service.proto
+    server: grpc://user-service:50051
+  
+  # With specific branch/tag
+  - url: github://grpc/grpc-go/examples/helloworld/helloworld/helloworld.proto@v1.65.0
+    server: grpc://production.example.com:50051
 ```
 
-⚠️ gRPC requires [reflection](https://github.com/grpc/grpc/blob/master/doc/server-reflection.md) enabled:
+**Option 1: gRPC Reflection** (requires [reflection](https://github.com/grpc/grpc/blob/master/doc/server-reflection.md) enabled):
 ```go
 // In your gRPC server
 import "google.golang.org/grpc/reflection"
 reflection.Register(grpcServer)
 ```
+
+**Option 2: .proto Files** (NEW! - more secure, no reflection needed):
+- Host your `.proto` files anywhere (GitHub, S3, CDN, etc.)
+- GitHub URLs (`github://`) automatically use `gh` CLI authentication
+- Specify the `server` endpoint separately
+- Perfect for production where reflection is disabled
+- Allows schema versioning and CI/CD validation
 
 For alternative reflection implementations, see:
 - [connectrpc/grpcreflect-go](https://github.com/connectrpc/grpcreflect-go)  Connect-Go's reflection implementation
@@ -364,13 +399,22 @@ schema_sources:
 
 ### GitHub Integration (NEW!)
 
-MCPizer can now fetch OpenAPI schemas directly from GitHub repositories using the `gh` CLI tool:
+MCPizer can fetch schemas directly from GitHub repositories using the `gh` CLI tool - including both OpenAPI and .proto files:
 
 ```yaml
 schema_sources:
-  # GitHub URLs - automatically uses gh CLI authentication
+  # OpenAPI schemas from GitHub
   - github://owner/repo/path/to/openapi.yaml
   - github://microsoft/api-guidelines/graph/openapi.yaml@v1.0
+  
+  # .proto files from GitHub (NEW!)
+  - url: github://grpc/grpc-go/examples/helloworld/helloworld/helloworld.proto@master
+    server: grpc://production.example.com:50051
+  
+  # Private repositories (uses gh CLI authentication)
+  - github://myorg/private-apis/user-api.yaml
+  - url: github://myorg/private-protos/service.proto@v2.0
+    server: grpc://internal-service:50051
   
   # Load MCPizer config itself from GitHub!
   # Set MCPIZER_CONFIG_FILE=github://myorg/configs/mcpizer.yaml
@@ -380,6 +424,7 @@ schema_sources:
 - ✅ Works with private repositories (uses `gh` authentication)
 - ✅ Specify branches/tags with `@ref` syntax
 - ✅ No need to manage raw GitHub URLs or tokens
+- ✅ Supports both OpenAPI and .proto files
 - ✅ Config files can also be stored in GitHub
 
 **Requirements:**
@@ -405,7 +450,7 @@ schema_sources:
 python -m uvicorn main:app
 
 # 2. Install MCPizer
-go install github.com/i2yeo/mcpizer/cmd/mcpizer@latest
+go install github.com/i2y/mcpizer/cmd/mcpizer@latest
 
 # 3. Configure (~/.mcpizer.yaml)
 echo "schema_sources:\n  - http://localhost:8000" > ~/.mcpizer.yaml
@@ -430,17 +475,22 @@ EOF
 ```yaml
 # For APIs that require authentication headers
 schema_sources:
-  # Object format with headers
+  # Object format with headers (for fetching schemas)
   - url: https://api.example.com/openapi.json
     headers:
       Authorization: "Bearer YOUR_API_TOKEN"
       X-API-Key: "YOUR_API_KEY"
   
+  # GitHub private repos (automatic auth via gh CLI)
+  - github://myorg/private-apis/openapi.yaml     # No headers needed!
+  - url: github://myorg/private-protos/api.proto  # gh handles auth
+    server: grpc://api.example.com:50051
+  
   # Simple format (no auth required)
   - https://public-api.example.com/swagger.json
 ```
 
-Note: These headers are used when fetching the OpenAPI schema. Headers required for API calls should be defined in the OpenAPI spec itself.
+Note: These headers are used when fetching the schema files. Headers required for actual API calls should be defined in the OpenAPI spec itself.
 
 ### "I'm getting 'no tools available'"
 
@@ -453,6 +503,28 @@ MCPIZER_LOG_LEVEL=debug mcpizer -transport=stdio
 
 # 3. Check the log file
 tail -f /tmp/mcpizer.log
+```
+
+### "I want to use my company's gRPC services"
+
+**Option 1: If reflection is enabled**
+```yaml
+# Simple - just point to the service
+schema_sources:
+  - grpc://my-service:50051
+```
+
+**Option 2: Using .proto files (recommended)**
+```yaml
+# More secure - no reflection needed in production
+schema_sources:
+  # From GitHub (private repos supported)
+  - url: github://mycompany/protos/user-service.proto@v1.0.0
+    server: grpc://user-service.prod:443
+  
+  # From any HTTPS URL
+  - url: https://cdn.mycompany.com/schemas/order-service.proto
+    server: grpc://order-service.prod:443
 ```
 
 ### "I want to run MCPizer as a service"
@@ -505,8 +577,9 @@ grpcurl -plaintext your-grpc-host:50051 list
 | "No tools available" | • Check API is running<br>• Try direct schema URL<br>• Check debug logs |
 | "Connection refused" | • Wrong port?<br>• Check if API is running<br>• Firewall blocking? |
 | "String should have at most 64 characters" | Update MCPizer - this is fixed in latest version |
-| gRPC "connection refused" | • Enable reflection in your gRPC server<br>• Check with `grpcurl` |
+| gRPC "connection refused" | • Enable reflection in your gRPC server<br>• Check with `grpcurl`<br>• Or use .proto file approach instead |
 | "Schema not found at base URL" | • Specify exact schema path<br>• Check if API exposes OpenAPI |
+| ".proto file missing server" | • Add `server: grpc://host:port` to your config<br>• Required for .proto files |
 
 ## Examples
 
@@ -573,6 +646,7 @@ def get_item(item_id: int, q: str = None):
 
 ### gRPC Example
 
+**Option 1: Using Reflection**
 ```go
 // Enable reflection for MCPizer
 import "google.golang.org/grpc/reflection"
@@ -584,6 +658,25 @@ func main() {
     s.Serve(lis)
 }
 ```
+
+**Option 2: Using .proto Files (Recommended for Production)**
+```yaml
+# config.yaml
+schema_sources:
+  # Your .proto file in version control
+  - url: github://myorg/protos/user-service.proto@v1.0.0
+    server: grpc://user-service.prod.example.com:443
+  
+  # Multiple environments, same schema
+  - url: github://myorg/protos/user-service.proto@v1.0.0
+    server: grpc://user-service.staging.example.com:443
+```
+
+Benefits:
+- ✅ No reflection needed in production
+- ✅ Version-controlled schemas
+- ✅ CI/CD can validate schemas
+- ✅ Same .proto for multiple environments
 
 ## Development
 
@@ -601,7 +694,10 @@ docker compose up
 cd examples/fastapi && pip install -r requirements.txt && python main.py
 ```
 
-See [examples/](examples/) for more complete examples.
+See [examples/](examples/) for more complete examples:
+- [proto-config.yaml](examples/proto-config.yaml) - Using .proto files with multiple environments
+- [fastapi/](examples/fastapi/) - FastAPI integration example
+- [grpc-service/](examples/grpc-service/) - gRPC service with reflection
 
 ## Contributing
 

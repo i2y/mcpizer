@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/i2y/mcpizer/internal/adapter/outbound/grpcinvoker"
 	"github.com/i2y/mcpizer/internal/adapter/outbound/httpinvoker"
@@ -33,7 +34,24 @@ func (r *Router) Invoke(ctx context.Context, details usecase.InvocationDetails, 
 	switch details.Type {
 	case "grpc":
 		log.Info("Routing to gRPC invoker")
-		return r.grpcInvoker.InvokeGRPC(ctx, details.Host, details.GRPCService, details.GRPCMethod, params)
+		// Use Server field if available (for .proto files), otherwise fall back to Host
+		target := details.Host
+		if details.Server != "" {
+			target = details.Server
+		}
+		// Use Method field if available (for .proto files), otherwise use GRPCService/GRPCMethod
+		if details.Method != "" {
+			// Method already contains the full path like /package.Service/Method
+			// Extract service and method parts
+			parts := strings.Split(details.Method, "/")
+			if len(parts) >= 3 {
+				// parts[0] is empty, parts[1] is package.Service, parts[2] is Method
+				// parts[1] contains the full service name like "package.Service"
+				method := parts[2]
+				return r.grpcInvoker.InvokeGRPC(ctx, target, parts[1], method, params)
+			}
+		}
+		return r.grpcInvoker.InvokeGRPC(ctx, target, details.GRPCService, details.GRPCMethod, params)
 
 	case "http", "":
 		log.Info("Routing to HTTP invoker")

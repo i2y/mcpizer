@@ -83,6 +83,19 @@ type InvocationDetails struct {
 	// GRPCMethod is the method name (e.g., "SayHello")
 	GRPCMethod string `json:"grpc_method,omitempty"`
 
+	// For .proto files: Server is the actual gRPC server endpoint
+	Server string `json:"server,omitempty"`
+
+	// For .proto files: Method is the full method path (e.g., "/package.Service/Method")
+	Method string `json:"method,omitempty"`
+
+	// For .proto files: Input and Output type names
+	InputType  string `json:"input_type,omitempty"`
+	OutputType string `json:"output_type,omitempty"`
+
+	// For .proto files: File descriptor for dynamic invocation
+	FileDescriptor interface{} `json:"file_descriptor,omitempty"`
+
 	// ContentType indicates the expected Content-Type for the request body (e.g., "application/json").
 	// Defaults to application/json if involving a body.
 	ContentType string `json:"content_type,omitempty"`

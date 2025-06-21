@@ -16,6 +16,7 @@ import (
 type SchemaSource struct {
 	URL     string            `yaml:"url"`
 	Headers map[string]string `yaml:"headers,omitempty"`
+	Server  string            `yaml:"server,omitempty"` // For .proto files, the gRPC server endpoint
 }
 
 // FileConfig defines the structure loaded from the YAML configuration file.
@@ -130,7 +131,15 @@ func Load() (*Config, error) {
 					}
 				}
 			}
+			if server, ok := v["server"].(string); ok {
+				ss.Server = server
+			}
 			if ss.URL != "" {
+				// Validate that .proto files have a server specified
+				if strings.HasSuffix(ss.URL, ".proto") && ss.Server == "" {
+					slog.Warn("Proto file source missing server field, skipping", "url", ss.URL)
+					continue
+				}
 				finalCfg.SchemaSources = append(finalCfg.SchemaSources, ss)
 			}
 		default:

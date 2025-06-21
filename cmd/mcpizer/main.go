@@ -25,6 +25,7 @@ import (
 	// Import outbound adapters needed for syncUC
 	"github.com/i2y/mcpizer/internal/adapter/outbound/github"
 	grpcadapter "github.com/i2y/mcpizer/internal/adapter/outbound/grpc"
+	protoadapter "github.com/i2y/mcpizer/internal/adapter/outbound/proto"
 
 	// "github.com/i2y/mcpizer/internal/adapter/inbound/mcphttp" // Replaced by mcp-go server
 	// "github.com/i2y/mcpizer/internal/adapter/outbound/httpinvoker" // Not used here anymore
@@ -133,19 +134,23 @@ func main() {
 	openapiFetcher := openapi.NewSchemaFetcher(httpClient, logger)
 	grpcFetcher := grpcadapter.NewSchemaFetcher(logger)
 	githubFetcher := github.NewFetcher(logger)
+	protoFetcher := protoadapter.NewSchemaFetcher(httpClient, logger)
 	fetchers := map[domain.SchemaType]usecase.SchemaFetcher{
 		domain.SchemaTypeOpenAPI: openapiFetcher,
 		domain.SchemaTypeGRPC:    grpcFetcher,
 		domain.SchemaTypeGitHub:  githubFetcher,
+		domain.SchemaTypeProto:   protoFetcher,
 	}
 	logger.Debug("Schema fetchers initialized.")
 
 	// --- Tool Generators (Outbound - Needed by Sync Use Case) ---
 	openapiGenerator := openapi.NewToolGenerator(logger)
 	grpcGenerator := grpcadapter.NewToolGenerator(logger)
+	protoGenerator := protoadapter.NewGenerator(logger)
 	generators := map[domain.SchemaType]usecase.ToolGenerator{
 		domain.SchemaTypeOpenAPI: openapiGenerator,
 		domain.SchemaTypeGRPC:    grpcGenerator,
+		domain.SchemaTypeProto:   protoGenerator,
 	}
 	logger.Debug("Tool generators initialized.")
 
@@ -163,6 +168,7 @@ func main() {
 		sourceConfigs[i] = usecase.SchemaSourceConfig{
 			URL:     source.URL,
 			Headers: source.Headers,
+			Server:  source.Server,
 		}
 	}
 	syncUC := usecase.NewSyncSchemaUseCase(

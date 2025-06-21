@@ -88,14 +88,14 @@ func (uc *SyncSchemaUseCase) processSingleSourceAndRegister(ctx context.Context,
 	}
 	log = log.With(slog.String("detected_type", string(schemaType)))
 
-	// Special handling for GitHub URLs - they need the GitHub fetcher even though they're OpenAPI
+	// Special handling for GitHub URLs - they need the GitHub fetcher
 	var fetcher SchemaFetcher
 	var ok bool
 	if strings.HasPrefix(source.URL, "github://") {
 		// Check if we have a GitHub fetcher registered
 		fetcher, ok = uc.fetchers[domain.SchemaType("github")]
 		if !ok {
-			// Fall back to OpenAPI fetcher if no dedicated GitHub fetcher
+			// Fall back to the appropriate fetcher based on file type
 			fetcher, ok = uc.fetchers[schemaType]
 		}
 	} else {
@@ -106,13 +106,13 @@ func (uc *SyncSchemaUseCase) processSingleSourceAndRegister(ctx context.Context,
 		return fmt.Errorf("no schema fetcher available for type %s", schemaType)
 	}
 
-	// Use FetchWithConfig if headers are provided
+	// Use FetchWithConfig if headers are provided or if it's a .proto file with server
 	var fetchedSchema domain.APISchema
 	var err error
-	if len(source.Headers) > 0 {
+	if len(source.Headers) > 0 || (schemaType == domain.SchemaTypeProto && source.Server != "") {
 		fetchedSchema, err = fetcher.FetchWithConfig(ctx, source)
 		if err != nil {
-			return fmt.Errorf("failed to fetch schema with headers: %w", err)
+			return fmt.Errorf("failed to fetch schema with config: %w", err)
 		}
 	} else {
 		fetchedSchema, err = fetcher.Fetch(ctx, source.URL)
@@ -393,11 +393,19 @@ func (uc *SyncSchemaUseCase) createToolHandler(details InvocationDetails, toolNa
 
 // determineSchemaType guesses the schema type based on the source string prefix.
 func (uc *SyncSchemaUseCase) determineSchemaType(source string) domain.SchemaType {
+	// Check if it's a .proto file (handle @ref suffix for GitHub URLs)
+	sourcePath := source
+	if idx := strings.Index(source, "@"); idx != -1 {
+		sourcePath = source[:idx]
+	}
+	if strings.HasSuffix(sourcePath, ".proto") {
+		return domain.SchemaTypeProto
+	}
 	if strings.HasPrefix(source, "grpc://") {
 		return domain.SchemaTypeGRPC
 	}
 	if strings.HasPrefix(source, "github://") {
-		// GitHub URLs are always treated as OpenAPI for now
+		// GitHub URLs default to OpenAPI unless they end with .proto
 		return domain.SchemaTypeOpenAPI
 	}
 	if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") || !strings.Contains(source, "://") {
